@@ -1966,6 +1966,136 @@
   font-size: 18px;
 }
 
+.recent-activity-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.activity-calendar-modal {
+  width: min(100%, 430px);
+}
+
+.calendar-month-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 0 10px;
+}
+
+.calendar-month-heading h3 {
+  margin: 0;
+  color: #45394e;
+  font-size: 14px;
+}
+
+.calendar-month-button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #eae5ec;
+  border-radius: 8px;
+  background: #fff;
+  color: #6b4782;
+  cursor: pointer;
+  font: inherit;
+  font-size: 20px;
+}
+
+.activity-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.calendar-weekday {
+  padding: 5px 0;
+  color: #918995;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.calendar-empty-day {
+  min-height: 38px;
+}
+
+.calendar-day {
+  position: relative;
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #faf9fb;
+  color: #574d5e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+
+.calendar-day:hover,
+.calendar-day-selected {
+  border-color: #bda9cb;
+  background: #f2eef5;
+}
+
+.calendar-day-has-activities {
+  color: #563873;
+  font-weight: 750;
+}
+
+.calendar-activity-dot {
+  position: absolute;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #8b65a2;
+}
+
+.calendar-day-activities {
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid #f2eff3;
+}
+
+.calendar-day-activities h3 {
+  margin: 0 0 8px;
+  color: #45394e;
+  font-size: 12px;
+}
+
+.calendar-day-activities p {
+  margin: 0;
+  color: #918995;
+  font-size: 11px;
+}
+
+.calendar-day-activities ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calendar-day-activities li {
+  display: grid;
+  gap: 3px;
+  color: #574d5e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.calendar-day-activities li span {
+  color: #918995;
+  font-size: 10px;
+  font-weight: 400;
+}
+
 .recent-list {
   overflow: hidden;
   border: 1px solid #eae5ec;
@@ -2137,6 +2267,14 @@
 
   .profile-buttons {
     width: 100%;
+  }
+
+  .recent-activities .results-title {
+    align-items: flex-start;
+  }
+
+  .recent-activity-actions {
+    gap: 10px;
   }
 
   .profile-buttons > button {

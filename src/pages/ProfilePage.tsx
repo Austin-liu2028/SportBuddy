@@ -10,6 +10,7 @@ type ProfilePageProps = {
   gamesJoined: number
   activitiesCreated: number
   recentActivities: Activity[]
+  activitiesForCalendar: Activity[]
   isAnonymous: boolean
   isGoogleLinked: boolean
   onSave: (profile: UserProfile) => Promise<boolean>
@@ -25,6 +26,7 @@ export default function ProfilePage({
   gamesJoined,
   activitiesCreated,
   recentActivities,
+  activitiesForCalendar,
   isAnonymous,
   isGoogleLinked,
   onSave,
@@ -34,11 +36,34 @@ export default function ProfilePage({
   const [manageAvailability, setManageAvailability] = useState(false)
   const [draft, setDraft] = useState(profile)
   const [saveError, setSaveError] = useState('')
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(() => getDateKey(new Date()))
+
+  const calendarActivities = activitiesForCalendar.flatMap((activity) => {
+    const date = getActivityDate(activity)
+    return date ? [{ activity, dateKey: getDateKey(date) }] : []
+  })
+  const calendarDays = Array.from(
+    { length: new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate() },
+    (_, index) => index + 1
+  )
+  const firstWeekday = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay()
+  const selectedDayActivities = calendarActivities.filter(({ dateKey }) => dateKey === selectedCalendarDay)
+  const calendarMonthLabel = calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
   function openEditor(availabilityOnly = false) {
     setDraft(profile)
     setManageAvailability(availabilityOnly)
     setEditing(true)
+  }
+
+  function changeCalendarMonth(offset: number) {
+    setCalendarMonth((month) => new Date(month.getFullYear(), month.getMonth() + offset, 1))
+    setSelectedCalendarDay('')
   }
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
@@ -107,7 +132,7 @@ export default function ProfilePage({
       </div>
 
       <section className="recent-activities">
-        <div className="results-title"><div><span className="section-eyebrow">GOOD TIMES, RECENTLY</span><h2>Recent Activities</h2></div><button className="view-all-button" onClick={onViewActivities}>See all <span aria-hidden="true">→</span></button></div>
+        <div className="results-title"><div><span className="section-eyebrow">GOOD TIMES, RECENTLY</span><h2>Recent Activities</h2></div><div className="recent-activity-actions"><button className="view-all-button" onClick={() => setCalendarOpen(true)}>See in Calendar</button><button className="view-all-button" onClick={onViewActivities}>See all <span aria-hidden="true">→</span></button></div></div>
         {profileLoading || activitiesLoading ? (
           <div className="notice" role="status">Loading recent activities…</div>
         ) : recentActivities.length > 0 ? (
@@ -124,6 +149,57 @@ export default function ProfilePage({
           <div className="notice" role="status">You have not created or joined any activities yet.</div>
         )}
       </section>
+
+      {calendarOpen && (
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCalendarOpen(false) }}>
+          <section className="modal-card activity-calendar-modal" role="dialog" aria-modal="true" aria-labelledby="activity-calendar-title">
+            <button className="modal-close" onClick={() => setCalendarOpen(false)} aria-label="Close activity calendar">×</button>
+            <span className="section-eyebrow">YOUR ACTIVITY HISTORY</span>
+            <h2 id="activity-calendar-title">Activity Calendar</h2>
+            <div className="calendar-month-heading">
+              <button className="calendar-month-button" onClick={() => changeCalendarMonth(-1)} aria-label="Previous month">‹</button>
+              <h3>{calendarMonthLabel}</h3>
+              <button className="calendar-month-button" onClick={() => changeCalendarMonth(1)} aria-label="Next month">›</button>
+            </div>
+            <div className="activity-calendar-grid" role="group" aria-label={`${calendarMonthLabel} calendar`}>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <span className="calendar-weekday" key={day}>{day}</span>
+              ))}
+              {Array.from({ length: firstWeekday }, (_, index) => (
+                <span className="calendar-empty-day" key={`empty-${index}`} />
+              ))}
+              {calendarDays.map((day) => {
+                const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day)
+                const dateKey = getDateKey(date)
+                const count = calendarActivities.filter((item) => item.dateKey === dateKey).length
+                return (
+                  <button
+                    className={`calendar-day${count ? ' calendar-day-has-activities' : ''}${selectedCalendarDay === dateKey ? ' calendar-day-selected' : ''}`}
+                    type="button"
+                    aria-label={`${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}${count ? `, ${count} ${count === 1 ? 'activity' : 'activities'}` : ''}`}
+                    aria-pressed={selectedCalendarDay === dateKey}
+                    key={dateKey}
+                    onClick={() => setSelectedCalendarDay(dateKey)}
+                  >
+                    {day}
+                    {count > 0 && <span className="calendar-activity-dot" aria-hidden="true" />}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="calendar-day-activities" aria-live="polite">
+              <h3>{selectedCalendarDay ? new Date(`${selectedCalendarDay}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'Select a day'}</h3>
+              {selectedDayActivities.length ? (
+                <ul>
+                  {selectedDayActivities.map(({ activity }) => <li key={activity.id}>{activity.title}<span>{activity.time} · {activity.location}</span></li>)}
+                </ul>
+              ) : (
+                <p>{selectedCalendarDay ? 'No activities on this day.' : 'Choose a day to see its activities.'}</p>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
 
       {editing && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditing(false) }}>
@@ -146,4 +222,50 @@ export default function ProfilePage({
       )}
     </section>
   )
+}
+
+function getDateKey(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getActivityDate(activity: Activity) {
+  if (activity.dateISO && /^\d{4}-\d{2}-\d{2}$/.test(activity.dateISO)) {
+    const [year, month, day] = activity.dateISO.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    if (getDateKey(date) === activity.dateISO) return date
+  }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const label = activity.date.trim()
+  if (label === 'Today') return today
+  if (label === 'Tomorrow') {
+    today.setDate(today.getDate() + 1)
+    return today
+  }
+
+  const weekdayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(label)
+  if (weekdayIndex >= 0) {
+    const daysAhead = (weekdayIndex - today.getDay() + 7) % 7
+    today.setDate(today.getDate() + daysAhead)
+    return today
+  }
+
+  const dayMonth = label.match(/(?:\w+,\s*)?([A-Za-z]{3,})\s+(\d{1,2})/)
+  if (dayMonth) {
+    const parsedDate = new Date(`${dayMonth[1]} ${dayMonth[2]}, ${today.getFullYear()} 12:00:00`)
+    const parsedMonth = new Date(`${dayMonth[1]} 1, ${today.getFullYear()} 12:00:00`)
+    if (
+      !Number.isNaN(parsedDate.getTime()) &&
+      parsedDate.getMonth() === parsedMonth.getMonth() &&
+      parsedDate.getDate() === Number(dayMonth[2])
+    ) {
+      return parsedDate
+    }
+  }
+
+  return null
 }

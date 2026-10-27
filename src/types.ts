@@ -35,6 +35,7 @@ export type Activity = {
   }
   title: string
   date: string
+  dateISO?: string
   time: string
   location: string
   skill: string

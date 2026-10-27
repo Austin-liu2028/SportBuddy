@@ -48,6 +48,7 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
       },
       title: name.trim(),
       date: dateLabel,
+      dateISO: date,
       time: `${formatTime(startTime)}–${formatTime(endTime)}`,
       location: location.trim(),
       skill,

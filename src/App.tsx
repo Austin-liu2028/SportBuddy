@@ -1072,6 +1072,7 @@ async function leaveActivity(activity: Activity) {
           gamesJoined={gamesJoined.length}
           activitiesCreated={activitiesCreated.length}
           recentActivities={recentActivities}
+          activitiesForCalendar={currentUserActivityHistory}
           isAnonymous={isAnonymous}
           isGoogleLinked={isGoogleLinked}
           onSave={saveProfile}
