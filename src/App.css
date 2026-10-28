@@ -2105,9 +2105,25 @@
 
 .recent-item {
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 10px;
   padding: 11px 14px;
+  border: 0;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.recent-item:hover,
+.recent-item:focus-visible {
+  background: #faf8fb;
+}
+
+.recent-item:focus-visible {
+  outline: 2px solid #8b65a2;
+  outline-offset: -2px;
 }
 
 .recent-item + .recent-item {

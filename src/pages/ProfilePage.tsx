@@ -11,6 +11,7 @@ type ProfilePageProps = {
   activitiesCreated: number
   recentActivities: Activity[]
   activitiesForCalendar: Activity[]
+  onOpenActivity: (activity: Activity) => void
   isAnonymous: boolean
   isGoogleLinked: boolean
   onSave: (profile: UserProfile) => Promise<boolean>
@@ -27,6 +28,7 @@ export default function ProfilePage({
   activitiesCreated,
   recentActivities,
   activitiesForCalendar,
+  onOpenActivity,
   isAnonymous,
   isGoogleLinked,
   onSave,
@@ -138,11 +140,11 @@ export default function ProfilePage({
         ) : recentActivities.length > 0 ? (
           <div className="recent-list">
             {recentActivities.map((activity) => (
-              <article className="recent-item" key={activity.id}>
+            <button className="recent-item" key={activity.id} type="button" onClick={() => onOpenActivity(activity)}>
                 <span className="recent-icon avatar-lilac" aria-hidden="true">{activity.sport.slice(0, 1)}</span>
                 <div><h3>{activity.title}</h3><p>{activity.date} · {activity.location}</p></div>
                 <span className="recent-sport">{activity.sport}</span>
-              </article>
+            </button>
             ))}
           </div>
         ) : (
