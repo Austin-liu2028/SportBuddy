@@ -1,10 +1,16 @@
 import type { Activity } from '../types'
 import { activityStatusLabels, getActivityStatus, getActivityTimestampRange } from '../utils/activityStatus'
 import Icon, { SportIcon } from './Icon'
+import MemberAvatar from './MemberAvatar'
+import { useMemberProfiles } from '../context/MemberProfilesContext'
+import { memberDisplayName } from '../utils/memberProfiles'
 
 type ActivityCardProps = { activity: Activity; joined: boolean; now: number; showDistance?: boolean; onOpen: (activity: Activity) => void }
 
 export default function ActivityCard({ activity, joined, now, onOpen }: ActivityCardProps) {
+  const { profiles, openProfile } = useMemberProfiles()
+  const member = activity.ownerUid ? profiles[activity.ownerUid] : undefined
+  const name = memberDisplayName(member?.displayName, activity.organizer)
   const full = activity.players >= activity.capacity
   const status = getActivityStatus(activity, now)
   const available = (status === 'upcoming' || status === 'ongoing') && !full
@@ -24,7 +30,10 @@ export default function ActivityCard({ activity, joined, now, onOpen }: Activity
       <p><Icon name="pin" /><span>{activity.location}</span></p>
     </div>
     <div className="activity-tags"><span className="skill-tag">{activity.skill}</span><span className="player-count"><Icon name="users" />{activity.players}/{activity.capacity} players</span></div>
-    <div className="activity-bottom"><span className="activity-host">Hosted by <strong>{activity.organizer}</strong></span><button className={`join-button${joined ? ' join-button-done' : !available ? ' join-button-muted' : ''}`} onClick={() => onOpen(activity)} aria-label={`${joined || !available ? 'View' : 'Join'} ${activity.title}`}>
+    <div className="activity-bottom">
+      {activity.ownerUid ? <button className="activity-host host-profile-button" onClick={() => openProfile(activity.ownerUid!, name)} aria-label={`View ${name}’s profile`}><MemberAvatar name={name} photoURL={member?.photoURL} /><span><span className="host-caption">Hosted by</span><strong>{name}</strong></span></button>
+        : <span className="activity-host"><MemberAvatar name={name} /><span><span className="host-caption">Hosted by</span><strong>{name}</strong></span></span>}
+      <button className={`join-button${joined ? ' join-button-done' : !available ? ' join-button-muted' : ''}`} onClick={() => onOpen(activity)} aria-label={`${joined || !available ? 'View' : 'Join'} ${activity.title}`}>
       {joined ? 'View game' : available ? 'Join Game' : 'View details'}<Icon name="arrow" />
     </button></div>
   </article>

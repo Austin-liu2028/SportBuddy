@@ -75,3 +75,12 @@ export type UserProfile = {
   availability: string
   distance: string
 }
+
+export type MemberProfile = {
+  uid: string
+  displayName: string
+  photoURL: string
+  sports: string
+  skills: string
+  availability: string
+}

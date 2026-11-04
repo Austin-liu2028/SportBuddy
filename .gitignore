@@ -25,6 +25,7 @@ dist-ssr
 
 # Firebase cache
 .firebase/
+.sportbuddy-backups/
 .sportbuddy-test-activity-manifest.json
 .sportbuddy-test-activity-manifest.json.tmp
 

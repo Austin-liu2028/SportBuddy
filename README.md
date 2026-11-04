@@ -47,6 +47,8 @@ Run `npm test` for the unit tests and `npm run lint` for lint checks. See [respo
 
 The [membership permission fix](docs/FIRESTORE_MEMBERSHIP_FIX.md) documents the join/leave rules mismatch and how to run its local emulator tests. Its production rules deployment is pending.
 
+See [member profiles](docs/MEMBER_PROFILES.md) for clickable organizer photos, public profile fields, privacy rules, and deployment requirements.
+
 ## Deployment
 
 ```bash

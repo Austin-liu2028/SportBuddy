@@ -4,6 +4,8 @@ import { useDialog } from '../hooks/useDialog'
 import Icon from '../components/Icon'
 import { getActivityStartAt } from '../utils/activityStatus'
 import { DISPLAY_NAME_MAX_LENGTH } from '../utils/organizerName'
+import { useMemberProfiles } from '../context/MemberProfilesContext'
+import MemberAvatar from '../components/MemberAvatar'
 
 type ProfilePageProps = {
   profile: UserProfile
@@ -46,6 +48,7 @@ export default function ProfilePage({
   onSignOut,
   authBusy,
 }: ProfilePageProps) {
+  const { profiles, syncError, retry } = useMemberProfiles()
   const [editing, setEditing] = useState(false)
   const [manageAvailability, setManageAvailability] = useState(false)
   const [draft, setDraft] = useState(profile)
@@ -93,14 +96,6 @@ export default function ProfilePage({
     }
   }
 
-  const initials = profile.displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase() || 'P'
-
   return (
     <section className="inner-page profile-page" id="main-content" tabIndex={-1}>
       <div className="page-heading">
@@ -110,7 +105,7 @@ export default function ProfilePage({
       </div>
       <section className="profile-hero-card">
         <div className="profile-identity">
-          <div className="profile-avatar">{initials}</div>
+          <MemberAvatar name={profile.displayName} photoURL={profiles[profile.uid]?.photoURL} className="member-avatar-large" />
           <div>
             <h2>{profile.displayName}</h2>
             <p>
@@ -131,6 +126,8 @@ export default function ProfilePage({
 
       {profileLoading && <div className="notice" role="status">Loading your profile…</div>}
       {(profileError || saveError) && <div className="notice" role="alert">{profileError || saveError}</div>}
+      {syncError && <div className="notice" role="alert"><span>{syncError}</span><button className="retry-button" onClick={retry}>Retry</button></div>}
+      <p className="profile-visibility-note">Your name, Google profile photo, sports, skill levels, and availability are visible to signed-in SportBuddy members. Your account email stays private.</p>
 
       <div className="profile-content-grid">
         <section className="profile-panel">

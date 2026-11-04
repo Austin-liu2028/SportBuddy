@@ -23,6 +23,7 @@ import {
 import { auth, db } from './firebase'
 import ActivityModal from './components/ActivityModal'
 import CreateActivityModal from './components/CreateActivityModal'
+import MemberProfilesProvider from './components/MemberProfilesProvider'
 import Navbar from './components/Navbar'
 import { initialUserProfile } from './data/profile'
 import ActivitiesPage from './pages/ActivitiesPage'
@@ -1041,6 +1042,7 @@ async function leaveActivity(activity: Activity) {
   }
 
   return (
+    <MemberProfilesProvider user={firebaseUser} profile={!profileLoading && profile.uid === userId ? profile : null} activities={activities} joinedIds={joinedIds} now={currentTime} onOpenActivity={openActivity} onBeforeOpenProfile={() => setSelectedActivity(null)}>
     <main className="app-shell">
       <Navbar
         onCreateActivity={openCreateActivity}
@@ -1110,11 +1112,9 @@ async function leaveActivity(activity: Activity) {
         <FindPartnersPage
           activities={activities}
           currentUid={userId}
-          joinedIds={joinedIds}
           now={currentTime}
           loading={!authReady || activitiesLoading}
           error={dataError}
-          onOpenActivity={openActivity}
         />
       )}
 
@@ -1308,6 +1308,7 @@ async function leaveActivity(activity: Activity) {
         </div>
       )}
     </main>
+    </MemberProfilesProvider>
   )
 }
 

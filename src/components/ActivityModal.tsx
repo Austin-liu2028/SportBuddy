@@ -2,6 +2,9 @@ import type { Activity, UserProfile } from '../types'
 import { activityStatusLabels, getActivityStatus } from '../utils/activityStatus'
 import { getParticipantNames } from '../utils/participantNames'
 import { useDialog } from '../hooks/useDialog'
+import { useMemberProfiles } from '../context/MemberProfilesContext'
+import MemberAvatar from './MemberAvatar'
+import { memberDisplayName } from '../utils/memberProfiles'
 
 type ActivityModalProps = {
   activity: Activity
@@ -29,6 +32,9 @@ export default function ActivityModal({
   onLeave,
 }: ActivityModalProps) {
   const dialog = useDialog(true, onClose, submitting)
+  const { profiles, openProfile } = useMemberProfiles()
+  const member = activity.ownerUid ? profiles[activity.ownerUid] : undefined
+  const organizerName = memberDisplayName(member?.displayName, activity.organizer)
 
 const status = getActivityStatus(activity, now)
 const cannotJoin = status === 'ended' || status === 'unavailable'
@@ -54,7 +60,8 @@ const contactValue = activity.contact.method === 'Phone'
         <button className="modal-close" onClick={onClose} disabled={submitting} aria-label="Close activity details">×</button>
         <span className="section-eyebrow">{activity.sport.toUpperCase()} GAME</span>
         <h2 id="activity-modal-title">{activity.title}</h2>
-        <p className="modal-organizer">Organized by <strong>{activity.organizer}</strong></p>
+        {activity.ownerUid ? <button className="modal-organizer organizer-profile-button" onClick={() => openProfile(activity.ownerUid!, organizerName)} disabled={submitting} aria-label={`View ${organizerName}’s profile`}><MemberAvatar name={organizerName} photoURL={member?.photoURL} /><span>Organized by <strong>{organizerName}</strong><span className="organizer-profile-hint">View profile →</span></span></button>
+          : <p className="modal-organizer">Organized by <strong>{organizerName}</strong></p>}
         <div className="modal-detail-grid">
           <div className="activity-modal-schedule"><span>Date &amp; time</span><strong>{activity.date}, {activity.time}</strong></div>
           <div>
