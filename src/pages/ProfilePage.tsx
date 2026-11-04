@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import type { Activity, UserProfile } from '../types'
+import { useDialog } from '../hooks/useDialog'
+import Icon from '../components/Icon'
+import { getActivityStartAt } from '../utils/activityStatus'
+import { DISPLAY_NAME_MAX_LENGTH } from '../utils/organizerName'
 
 type ProfilePageProps = {
   profile: UserProfile
@@ -16,6 +20,10 @@ type ProfilePageProps = {
   isGoogleLinked: boolean
   onSave: (profile: UserProfile) => Promise<boolean>
   onViewActivities: () => void
+  onLinkGoogleAccount: () => void
+  onSignInWithGoogle: () => void
+  onSignOut: () => void
+  authBusy: boolean
 }
 
 export default function ProfilePage({
@@ -33,12 +41,18 @@ export default function ProfilePage({
   isGoogleLinked,
   onSave,
   onViewActivities,
+  onLinkGoogleAccount,
+  onSignInWithGoogle,
+  onSignOut,
+  authBusy,
 }: ProfilePageProps) {
   const [editing, setEditing] = useState(false)
   const [manageAvailability, setManageAvailability] = useState(false)
   const [draft, setDraft] = useState(profile)
   const [saveError, setSaveError] = useState('')
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const editor = useDialog(editing, () => setEditing(false), saving)
+  const calendar = useDialog(calendarOpen, () => setCalendarOpen(false))
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date()
     return new Date(now.getFullYear(), now.getMonth(), 1)
@@ -88,11 +102,11 @@ export default function ProfilePage({
     .toUpperCase() || 'P'
 
   return (
-    <section className="inner-page profile-page">
+    <section className="inner-page profile-page" id="main-content" tabIndex={-1}>
       <div className="page-heading">
         <span className="section-eyebrow">YOUR SPORTBUDDY SPACE</span>
-        <h1>Profile</h1>
-        <p>A little about you and how you like to play.</p>
+        <h1>Your place on the team.</h1>
+        <p>Your sports, your schedule, and the games that bring you back.</p>
       </div>
       <section className="profile-hero-card">
         <div className="profile-identity">
@@ -106,7 +120,7 @@ export default function ProfilePage({
                   ? 'Temporary anonymous profile'
                   : 'Signed-in profile'}
             </p>
-            <span className="profile-campus"><span /> Northwestern University</span>
+            <span className="profile-campus">Campus sports community</span>
           </div>
         </div>
         <div className="profile-buttons">
@@ -120,18 +134,20 @@ export default function ProfilePage({
 
       <div className="profile-content-grid">
         <section className="profile-panel">
-          <div className="panel-heading"><h2>About me</h2><span aria-hidden="true">✦</span></div>
+          <div className="panel-heading"><h2>How you like to play</h2><Icon name="users" /></div>
           <div className="profile-field"><span>Sports</span><div className="profile-tags">{profile.sports.split(',').map((sport) => sport.trim()).filter(Boolean).map((sport) => <span key={sport}>{sport}</span>)}{!profile.sports.trim() && <p>Not set</p>}</div></div>
           <div className="profile-field"><span>Skill levels</span><p>{profile.skills.split(';').map((skill) => skill.trim()).filter(Boolean).map((skill) => <span className="skill-line" key={skill}>{skill}</span>)}{!profile.skills.trim() && 'Not set'}</p></div>
           <div className="profile-field"><span>Availability</span><p>{profile.availability || 'Not set'}</p></div>
           <div className="profile-field"><span>Preferred distance</span><p>{profile.distance || 'Not set'}</p></div>
         </section>
         <section className="profile-panel stats-panel">
-          <div className="panel-heading"><h2>Your stats</h2><span aria-hidden="true">↗</span></div>
-          <div className="stat-row"><span className="stat-icon">◉</span><span>Games joined</span><strong>{activitiesLoading ? '—' : gamesJoined}</strong></div>
-          <div className="stat-row"><span className="stat-icon stat-icon-peach">＋</span><span>Activities created</span><strong>{activitiesLoading ? '—' : activitiesCreated}</strong></div>
+          <div className="panel-heading"><h2>Your game history</h2><Icon name="calendar" /></div>
+          <div className="stat-row"><span className="stat-icon"><Icon name="users" /></span><span>Games joined, including hosted</span><strong>{activitiesLoading ? '—' : gamesJoined}</strong></div>
+          <div className="stat-row"><span className="stat-icon"><Icon name="plus" /></span><span>Games organized</span><strong>{activitiesLoading ? '—' : activitiesCreated}</strong></div>
         </section>
       </div>
+
+      <section className="profile-panel account-panel"><div className="panel-heading"><h2>Account &amp; sign-in</h2></div><p>{isAnonymous ? 'You’re playing as a guest. Link Google to keep this profile and its activity history across devices. Signing in to an existing Google account switches profiles.' : 'Your profile and activity history are connected to your account.'}</p><div className="account-actions">{isAnonymous ? <><button className="find-button" disabled={authBusy || activitiesLoading} onClick={onLinkGoogleAccount}>Link Google Account</button><button className="outline-button" disabled={authBusy || activitiesLoading} onClick={onSignInWithGoogle}>Sign in with Google</button></> : <button className="outline-button" disabled={authBusy} onClick={onSignOut}>Sign out</button>}</div></section>
 
       <section className="recent-activities">
         <div className="results-title"><div><span className="section-eyebrow">GOOD TIMES, RECENTLY</span><h2>Recent Activities</h2></div><div className="recent-activity-actions"><button className="view-all-button" onClick={() => setCalendarOpen(true)}>See in Calendar</button><button className="view-all-button" onClick={onViewActivities}>See all <span aria-hidden="true">→</span></button></div></div>
@@ -154,7 +170,7 @@ export default function ProfilePage({
 
       {calendarOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCalendarOpen(false) }}>
-          <section className="modal-card activity-calendar-modal" role="dialog" aria-modal="true" aria-labelledby="activity-calendar-title">
+          <section ref={calendar} className="modal-card activity-calendar-modal" role="dialog" aria-modal="true" aria-labelledby="activity-calendar-title">
             <button className="modal-close" onClick={() => setCalendarOpen(false)} aria-label="Close activity calendar">×</button>
             <span className="section-eyebrow">YOUR ACTIVITY HISTORY</span>
             <h2 id="activity-calendar-title">Activity Calendar</h2>
@@ -204,20 +220,21 @@ export default function ProfilePage({
       )}
 
       {editing && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditing(false) }}>
-          <section className="modal-card edit-profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title">
-            <button className="modal-close" onClick={() => setEditing(false)} aria-label="Close edit profile">×</button>
+        <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (!saving && event.target === event.currentTarget) setEditing(false) }}>
+          <section ref={editor} className="modal-card edit-profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title">
+            <button className="modal-close" onClick={() => setEditing(false)} disabled={saving} aria-label="Close edit profile">×</button>
             <span className="section-eyebrow">MAKE IT YOURS</span>
             <h2 id="profile-edit-title">{manageAvailability ? 'Manage Availability' : 'Edit Profile'}</h2>
             <form className="create-form" onSubmit={save}>
               {!manageAvailability && <>
-                <label className="wide-field">Name<input required maxLength={80} value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
+                <label className="wide-field">Name<input required maxLength={DISPLAY_NAME_MAX_LENGTH} value={draft.displayName} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
                 <label className="wide-field">Sports<input value={draft.sports} onChange={(event) => setDraft({ ...draft, sports: event.target.value })} /></label>
                 <label className="wide-field">Skill levels<input value={draft.skills} onChange={(event) => setDraft({ ...draft, skills: event.target.value })} /></label>
               </>}
               <label className="wide-field">Availability<input value={draft.availability} onChange={(event) => setDraft({ ...draft, availability: event.target.value })} placeholder="e.g. Weekdays after 4 PM" /></label>
               <label className="wide-field">Preferred distance<select value={draft.distance} onChange={(event) => setDraft({ ...draft, distance: event.target.value })}><option value="" disabled>Choose a distance</option><option>Within 0.5 miles</option><option>Within 1 mile</option><option>Within 2 miles</option><option>Any distance</option></select></label>
-              <button className="find-button wide-field" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button>
+              {(profileError || saveError) && <p className="form-error wide-field" role="alert">{profileError || saveError}</p>}
+              <div className="form-actions wide-field"><button className="outline-button" type="button" onClick={() => setEditing(false)} disabled={saving}>Cancel</button><button className="find-button" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button></div>
             </form>
           </section>
         </div>
@@ -234,6 +251,8 @@ function getDateKey(date: Date) {
 }
 
 function getActivityDate(activity: Activity) {
+  const start = getActivityStartAt(activity)
+  if (start) return start
   if (activity.dateISO && /^\d{4}-\d{2}-\d{2}$/.test(activity.dateISO)) {
     const [year, month, day] = activity.dateISO.split('-').map(Number)
     const date = new Date(year, month - 1, day)

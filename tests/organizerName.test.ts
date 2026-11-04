@@ -14,6 +14,6 @@ test('trims a chosen name and accepts nicknames without an account', () => {
 })
 
 test('keeps organizer names within the profile name length limit', () => {
-  assert.equal(getOrganizerName('a'.repeat(80)).length, 80)
-  assert.throws(() => getOrganizerName('a'.repeat(81)), /80 characters/)
+  assert.equal(getOrganizerName('a'.repeat(60)).length, 60)
+  assert.throws(() => getOrganizerName('a'.repeat(61)), /60 characters/)
 })

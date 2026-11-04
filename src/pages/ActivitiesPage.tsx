@@ -3,11 +3,14 @@ import ActivityCard from '../components/ActivityCard'
 import CreateActivityModal from '../components/CreateActivityModal'
 import SearchBar from '../components/SearchBar'
 import SportFilters from '../components/SportFilters'
+import DateFilters from '../components/DateFilters'
+import EmptyState, { ActivitySkeletons } from '../components/EmptyState'
+import Icon from '../components/Icon'
+import { compareActivityDates, matchesActivityDate, matchesActivitySearch, type DateFilter } from '../utils/activityDiscovery'
 import type { Activity, Sport } from '../types'
 import {
   getActivityStartAt,
   getActivityStatus,
-  getActivityTimestampRange,
   type ActivityStatus,
 } from '../utils/activityStatus'
 
@@ -40,6 +43,8 @@ type ActivitiesPageProps = {
   setQuery: (query: string) => void
   organizerName: string
   profileReady: boolean
+  loading: boolean
+  error: string
   onOpenActivity: (activity: Activity) => void
   onCreate: (activity: Activity) => Promise<void>
 }
@@ -52,6 +57,8 @@ export default function ActivitiesPage({
   setQuery,
   organizerName,
   profileReady,
+  loading,
+  error,
   onOpenActivity,
   onCreate,
 }: ActivitiesPageProps) {
@@ -63,6 +70,7 @@ export default function ActivitiesPage({
   const [status, setStatus] = useState<'All Statuses' | Exclude<ActivityStatus, 'unavailable'>>('All Statuses')
   const [availableSpotsOnly, setAvailableSpotsOnly] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [quickDate, setQuickDate] = useState<DateFilter>('All')
   const selectedStartDate = startDate ? getLocalDateStart(startDate) : null
   const selectedEndDate = endDate ? getLocalDateStart(endDate) : null
   const selectedStartTime = selectedStartDate?.getTime() ?? null
@@ -78,12 +86,11 @@ export default function ActivitiesPage({
   const filtered = useMemo(() => {
     if (invalidDateRange) return []
 
-    const search = query.trim().toLowerCase()
-
     return activities
       .filter((activity) => {
         if (tab === 'yours' && !joinedIds.includes(activity.id)) return false
         if (sport !== 'All' && activity.sport !== sport) return false
+        if (!matchesActivityDate(activity, quickDate, now)) return false
 
         const activityStatus = getActivityStatus(activity, now)
         if (status !== 'All Statuses' && activityStatus !== status.toLowerCase()) return false
@@ -117,33 +124,12 @@ export default function ActivitiesPage({
           if (activityStatus !== 'upcoming' && activityStatus !== 'ongoing') return false
         }
 
-        const searchText = `${activity.title} ${activity.sport} ${activity.location}`.toLowerCase()
-        return searchText.includes(search)
+        return matchesActivitySearch(activity, query)
       })
       .sort((first, second) => {
-        const firstStatus = getActivityStatus(first, now)
-        const secondStatus = getActivityStatus(second, now)
-        const rank: Record<ActivityStatus, number> = {
-          upcoming: 0,
-          ongoing: 1,
-          ended: 2,
-          unavailable: 3,
-        }
-        const statusDifference = rank[firstStatus] - rank[secondStatus]
-        if (statusDifference !== 0) return statusDifference
-
-        const firstRange = getActivityTimestampRange(first)
-        const secondRange = getActivityTimestampRange(second)
-        if (!firstRange || !secondRange) {
-          if (firstRange) return -1
-          if (secondRange) return 1
-          return 0
-        }
-        if (firstStatus === 'ongoing') return firstRange[1].getTime() - secondRange[1].getTime()
-        if (firstStatus === 'ended') return secondRange[1].getTime() - firstRange[1].getTime()
-        return firstRange[0].getTime() - secondRange[0].getTime()
+        return compareActivityDates(first, second, now)
       })
-  }, [activities, availableSpotsOnly, invalidDateRange, joinedIds, now, query, selectedEndExclusive, selectedStartTime, skill, sport, status, tab])
+  }, [activities, availableSpotsOnly, invalidDateRange, joinedIds, now, query, quickDate, selectedEndExclusive, selectedStartTime, skill, sport, status, tab])
 
   function resetFilters() {
     setSport('All')
@@ -153,6 +139,7 @@ export default function ActivitiesPage({
     setStatus('All Statuses')
     setAvailableSpotsOnly(false)
     setQuery('')
+    setQuickDate('All')
   }
 
   async function createActivity(activity: Activity) {
@@ -162,17 +149,17 @@ export default function ActivitiesPage({
   }
 
   return (
-    <section className="inner-page activities-page">
+    <section className="inner-page activities-page" id="main-content" tabIndex={-1}>
       <div className="activities-page-heading">
         <div className="page-heading">
           <span className="section-eyebrow">FIND YOUR NEXT GAME</span>
-          <h1>Explore Activities</h1>
-          <p>Discover games and get moving with your campus community.</p>
+          <h1>A game for every day.</h1>
+          <p>Find your sport, your time, and your people.</p>
         </div>
-        <button className="create-activity-button" onClick={() => setCreating(true)} disabled={!profileReady}>＋ Create Activity</button>
+        <button className="create-activity-button page-create-button" onClick={() => setCreating(true)} disabled={!profileReady}><Icon name="plus" />Create Activity</button>
       </div>
 
-      <SearchBar value={query} onChange={setQuery} placeholder="Search activities or locations..." />
+      <SearchBar value={query} onChange={setQuery} placeholder="Search games, sports, or locations" />
 
       <div className="activity-tabs" role="tablist" aria-label="Activity list">
         <button role="tab" aria-selected={tab === 'join'} className={tab === 'join' ? 'activity-tab tab-selected' : 'activity-tab'} onClick={() => setTab('join')}>Join Activities</button>
@@ -180,6 +167,8 @@ export default function ActivitiesPage({
       </div>
 
       <SportFilters selected={sport} onSelect={setSport} />
+      <div className="discovery-filter-row"><DateFilters value={quickDate} onChange={value => { setQuickDate(value); setStartDate(''); setEndDate('') }} /><button className="view-all-button" onClick={resetFilters}>Reset filters</button></div>
+      <details className="advanced-filters"><summary>More filters <span>Skill, availability &amp; date range</span></summary>
       <div className="activity-filter-panel" role="group" aria-label="Filter activities">
         <label>Skill Level
           <select value={skill} onChange={(event) => setSkill(event.target.value as SkillFilter)}>
@@ -197,7 +186,7 @@ export default function ActivitiesPage({
             value={startDate}
             aria-invalid={invalidDateRange}
             aria-describedby={invalidDateRange ? 'activity-date-range-error' : undefined}
-            onChange={(event) => setStartDate(event.target.value)}
+            onChange={(event) => { setStartDate(event.target.value); setQuickDate('All') }}
           />
         </label>
         <label>End Date
@@ -206,7 +195,7 @@ export default function ActivitiesPage({
             value={endDate}
             aria-invalid={invalidDateRange}
             aria-describedby={invalidDateRange ? 'activity-date-range-error' : undefined}
-            onChange={(event) => setEndDate(event.target.value)}
+            onChange={(event) => { setEndDate(event.target.value); setQuickDate('All') }}
           />
         </label>
         <label className="available-spots-filter">
@@ -215,6 +204,7 @@ export default function ActivitiesPage({
         </label>
         <button className="reset-activity-filters" type="button" onClick={resetFilters}>Reset Filters</button>
       </div>
+      </details>
       {invalidDateRange && (
         <p id="activity-date-range-error" className="date-range-error" role="alert">
           End Date must be the same as or later than Start Date.
@@ -222,9 +212,9 @@ export default function ActivitiesPage({
       )}
 
       <p className="activity-results-count" role="status" aria-live="polite">
-        {filtered.length} {filtered.length === 1 ? 'activity' : 'activities'} found
+        {loading ? 'Loading games…' : error ? 'Games are unavailable' : `${filtered.length} ${filtered.length === 1 ? 'game' : 'games'} found · Happening now, then soonest first`}
       </p>
-      {filtered.length ? (
+      {loading ? <ActivitySkeletons /> : error ? <EmptyState title="Games couldn’t be loaded">Use the message above to reconnect and try again.</EmptyState> : filtered.length ? (
         <div className="activity-grid">
           {filtered.map((activity) => (
             <ActivityCard
@@ -237,13 +227,7 @@ export default function ActivitiesPage({
           ))}
         </div>
       ) : (
-        <div className="empty-activities">
-          <span aria-hidden="true">✦</span>
-          <h3>{tab === 'yours' && joinedIds.length === 0 ? 'No activities yet' : 'No activities match your filters'}</h3>
-          <p>{tab === 'yours' && joinedIds.length === 0 ? 'Join a game or create a new activity to see it here.' : 'Try changing or resetting your filters to see more activities.'}</p>
-          {tab === 'yours' && <button onClick={() => setTab('join')}>Browse activities</button>}
-          <button onClick={resetFilters}>Reset Filters</button>
-        </div>
+        <EmptyState title={tab === 'yours' && joinedIds.length === 0 ? 'Your next game is waiting' : 'No games match these filters'} action={<div className="empty-actions">{tab === 'yours' && <button className="find-button" onClick={() => setTab('join')}>Browse games</button>}<button className="outline-button" onClick={resetFilters}>Reset filters</button></div>}>{tab === 'yours' && joinedIds.length === 0 ? 'Join a game or organize one. All your activities will be right here.' : 'Try a different day or sport. A little flexibility goes a long way.'}</EmptyState>
       )}
 
       {creating && <CreateActivityModal organizerName={organizerName} onClose={() => setCreating(false)} onCreate={createActivity} />}

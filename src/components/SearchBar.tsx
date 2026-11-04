@@ -30,11 +30,10 @@ export default function SearchBar({
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
+      {value && <button className="search-clear icon-button" type="button" aria-label="Clear search" onClick={() => onChange('')}>×</button>}
       {onSubmit ? (
         <button className="search-submit" type="submit">Search</button>
-      ) : (
-        <span className="search-shortcut" aria-hidden="true">⌘ K</span>
-      )}
+      ) : null}
     </form>
   )
 }

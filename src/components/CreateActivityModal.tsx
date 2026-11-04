@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Timestamp } from 'firebase/firestore'
 import { sportOptions } from '../data/activities'
 import type { Activity, Sport } from '../types'
-import { getOrganizerName } from '../utils/organizerName'
+import { DISPLAY_NAME_MAX_LENGTH, getOrganizerName } from '../utils/organizerName'
+import { useDialog } from '../hooks/useDialog'
 
 type CreateActivityModalProps = {
   organizerName: string
@@ -26,6 +27,7 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
   const [email, setEmail] = useState('')
   const [formError, setFormError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const dialog = useDialog(true, onClose, submitting)
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -99,30 +101,34 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
       if (!submitting && event.target === event.currentTarget) onClose()
     }}>
-      <section className="modal-card create-modal" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
+      <section ref={dialog} className="modal-card create-modal" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
         <button className="modal-close" onClick={onClose} disabled={submitting} aria-label="Close create activity form">×</button>
-        <span className="section-eyebrow">BRING PEOPLE TOGETHER</span>
-        <h2 id="create-modal-title">Create an activity</h2>
-        <p className="modal-organizer">Set up a game and invite the campus community.</p>
+        <span className="section-eyebrow">MORE PLAY. LESS PLANNING.</span>
+        <h2 id="create-modal-title">Get a game going.</h2>
+        <p className="modal-organizer">Pick a sport and a spot. Your campus will take it from there.</p>
         <form className="create-form" onSubmit={submit}>
-          <label className="wide-field">Your name<input required autoComplete="nickname" maxLength={80} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="What should other players call you?" aria-describedby="organizer-name-help" /><span id="organizer-name-help">Shown as the organizer and saved to your profile. No account required.</span></label>
+          <div className="form-section-heading wide-field">01 / The game</div>
+          <label className="wide-field">Sport<select required value={sport} onChange={(event) => setSport(event.target.value as Sport | '')}><option value="" disabled>Select a sport</option>{sportOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <label className="wide-field">Activity name<input required maxLength={60} value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Sunday soccer" /></label>
-          <label>Sport<select required value={sport} onChange={(event) => setSport(event.target.value as Sport | '')}><option value="" disabled>Select a sport</option>{sportOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label>Date<input required type="date" value={date} onChange={(event) => { setFormError(''); setDate(event.target.value) }} /></label>
+          <label className="wide-field">Location<input required maxLength={80} value={location} onChange={(event) => setLocation(event.target.value)} placeholder="A court, field, or favorite campus spot" /></label>
+          <label className="wide-field">Date<input required type="date" value={date} onChange={(event) => { setFormError(''); setDate(event.target.value) }} /><span>Times use your local time zone.</span></label>
           <label>Start time<input required type="time" value={startTime} onChange={(event) => { setFormError(''); setStartTime(event.target.value) }} /></label>
           <label>End time<input required type="time" name="endTime" min={startTime || undefined} value={endTime} onChange={(event) => { event.currentTarget.setCustomValidity(''); setFormError(''); setEndTime(event.target.value) }} /></label>
           <label>Maximum players<input required type="number" min="2" max="50" value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} /></label>
-          <label className="wide-field">Location<input required maxLength={80} value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Where are you meeting?" /></label>
           <label>Skill level<select value={skill} onChange={(event) => setSkill(event.target.value)}><option>All levels</option><option>Beginner friendly</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label>
+          <label className="wide-field">Additional details <span>Optional</span><textarea rows={3} maxLength={250} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What to bring, where to meet, or anything else players should know" /></label>
+          <div className="form-section-heading wide-field">02 / The organizer</div>
+          <label className="wide-field">Your name<input required autoComplete="nickname" maxLength={DISPLAY_NAME_MAX_LENGTH} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="What should other players call you?" aria-describedby="organizer-name-help" /></label>
+          <p className="form-hint wide-field" id="organizer-name-help">Shown as the organizer and saved to your profile. No account required.</p>
           <label>Contact method<select required value={contactMethod} onChange={(event) => setContactMethod(event.target.value as 'Phone' | 'Email')}><option>Phone</option><option>Email</option></select></label>
           {contactMethod === 'Phone' ? (
             <label className="wide-field">Phone number<input required type="tel" autoComplete="tel" maxLength={25} value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(555) 555-0123" /></label>
           ) : (
             <label className="wide-field">Email<input required type="email" autoComplete="email" maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@northwestern.edu" /></label>
           )}
-          <label className="wide-field">Description<textarea rows={3} maxLength={250} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Share a few details about your activity..." /></label>
+          <p className="form-hint wide-field">Your contact details appear in the game’s details so other players can reach you.</p>
           {formError && <p className="form-error wide-field" role="alert">{formError}</p>}
-          <button className="find-button wide-field" type="submit" disabled={submitting}>{submitting ? 'Creating…' : 'Create Activity'}</button>
+          <div className="form-actions wide-field"><button className="outline-button" type="button" onClick={onClose} disabled={submitting}>Cancel</button><button className="find-button" type="submit" disabled={submitting}>{submitting ? 'Creating…' : 'Create Activity'}</button></div>
         </form>
       </section>
     </div>

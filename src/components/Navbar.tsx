@@ -1,110 +1,77 @@
+import { useEffect, useRef, useState } from 'react'
 import type { Route } from '../types'
+import Icon from './Icon'
 
 const navItems: Array<{ label: string; path: Route }> = [
-  { label: 'Home', path: '/' },
-  { label: 'Find Partners', path: '/partners' },
-  { label: 'Activities', path: '/activities' },
-  { label: 'Profile', path: '/profile' },
+  { label: 'Home', path: '/' }, { label: 'Find Partners', path: '/partners' },
+  { label: 'Activities', path: '/activities' }, { label: 'Profile', path: '/profile' },
 ]
-
 type NavbarProps = {
-  route: Route
-  navigate: (path: Route) => void
-  authReady: boolean
-  signedIn: boolean
-  isAnonymous: boolean
-  authBusy: boolean
-  authPopupPending: boolean
-  authPopupCancellationPending: boolean
-  historyLoading: boolean
-  onLinkGoogleAccount: () => void
-  onSignInWithGoogle: () => void
-  onSignOut: () => void
+  route: Route; navigate: (path: Route) => void; authReady: boolean; signedIn: boolean
+  isAnonymous: boolean; authBusy: boolean; authPopupPending: boolean
+  authPopupCancellationPending: boolean; historyLoading: boolean
+  onLinkGoogleAccount: () => void; onSignInWithGoogle: () => void; onSignOut: () => void
+  onCreateActivity: () => void; canCreate: boolean
 }
 
-export default function Navbar({
-  route,
-  navigate,
-  authReady,
-  signedIn,
-  isAnonymous,
-  authBusy,
-  authPopupPending,
-  authPopupCancellationPending,
-  historyLoading,
-  onLinkGoogleAccount,
-  onSignInWithGoogle,
-  onSignOut,
-}: NavbarProps) {
-  return (
-    <header className="topbar">
-      <button className="brand" onClick={() => navigate('/')} aria-label="SportBuddy home">
-        <span className="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 40 40" fill="none">
-            <rect width="40" height="40" rx="13" fill="currentColor" />
-            <circle cx="15" cy="15" r="4" stroke="white" strokeWidth="1.8" />
-            <circle cx="26" cy="16" r="3.3" stroke="white" strokeWidth="1.8" />
-            <path d="M7.5 31c.6-5 3.2-7.5 7.5-7.5s6.9 2.5 7.5 7.5M22 25c1-1.2 2.4-1.8 4.2-1.8 3.8 0 5.9 2.4 6.3 7" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-        </span>
-        <span>SportBuddy</span>
-      </button>
-      <nav className="main-nav" aria-label="Main navigation">
-        {navItems.map((item) => (
-          <button
-            className={route === item.path ? 'nav-link nav-active' : 'nav-link'}
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            aria-current={route === item.path ? 'page' : undefined}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
-      <div className="auth-controls">
-        {isAnonymous ? (
-          <>
-            <button
-              className="auth-button"
-              onClick={onLinkGoogleAccount}
-              disabled={!authReady || authBusy}
-            >
-              Link Google Account
-            </button>
-            <button
-              className="auth-button auth-button-secondary"
-              onClick={onSignInWithGoogle}
-              disabled={!authReady || authBusy || historyLoading}
-              title={historyLoading ? 'Loading your activity history…' : undefined}
-            >
-              Sign in with Google
-            </button>
-          </>
-        ) : !signedIn ? (
-          <button
-            className="auth-button"
-            onClick={onSignInWithGoogle}
-            disabled={!authReady || authBusy}
-          >
-            Sign in with Google
-          </button>
-        ) : (
-          <button
-            className="auth-button"
-            onClick={onSignOut}
-            disabled={!authReady || authBusy}
-          >
-            {authBusy ? 'Signing out…' : 'Sign out'}
-          </button>
-        )}
-        {authPopupPending && (
-          <span className="auth-popup-status" role="status">
-            {authPopupCancellationPending
-              ? 'Finishing cancellation...'
-              : 'Google sign-in is in progress. Close the popup to cancel.'}
-          </span>
-        )}
+export default function Navbar(props: NavbarProps) {
+  const { route, navigate, authReady, signedIn, isAnonymous, authBusy, authPopupPending,
+    authPopupCancellationPending, historyLoading, onLinkGoogleAccount, onSignInWithGoogle, onSignOut,
+    onCreateActivity, canCreate } = props
+  const [open, setOpen] = useState(false)
+  const header = useRef<HTMLElement>(null)
+  const toggle = useRef<HTMLButtonElement>(null)
+  const account = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    const outside = (event: PointerEvent) => {
+      if (!header.current?.contains(event.target as Node)) setOpen(false)
+      if (!account.current?.contains(event.target as Node) && account.current) account.current.open = false
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (account.current?.open) {
+        account.current.open = false
+        account.current.querySelector('summary')?.focus()
+      } else if (open) { setOpen(false); toggle.current?.focus() }
+    }
+    const focusOutside = (event: FocusEvent) => {
+      if (!header.current?.contains(event.target as Node)) setOpen(false)
+    }
+    document.addEventListener('pointerdown', outside)
+    document.addEventListener('keydown', escape)
+    document.addEventListener('focusin', focusOutside)
+    return () => {
+      document.removeEventListener('pointerdown', outside)
+      document.removeEventListener('keydown', escape)
+      document.removeEventListener('focusin', focusOutside)
+    }
+  }, [open])
+  function run(action: () => void) { setOpen(false); if (account.current) account.current.open = false; action() }
+  return <header className="topbar" ref={header}>
+    <a className="skip-link" href="#main-content">Skip to content</a>
+    <a className="brand" href="/" onClick={event => { event.preventDefault(); run(() => navigate('/')) }} aria-label="SportBuddy home">
+      <span className="brand-mark"><Icon name="users" /></span><span>Sport<span className="brand-accent">Buddy</span></span>
+    </a>
+    <button ref={toggle} className="menu-toggle icon-button" aria-label={open ? 'Close navigation' : 'Open navigation'} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)}><Icon name={open ? 'close' : 'menu'} /></button>
+    <div className={`header-navigation${open ? ' navigation-open' : ''}`} id="site-navigation">
+      <nav className="main-nav" aria-label="Main navigation">{navItems.map(item => <a href={item.path} className={`nav-link${route === item.path ? ' nav-active' : ''}`} key={item.path} aria-current={route === item.path ? 'page' : undefined} onClick={event => { event.preventDefault(); run(() => navigate(item.path)) }}>{item.label}</a>)}</nav>
+      <div className="header-actions">
+        <button className="create-activity-button" disabled={!canCreate} onClick={() => run(onCreateActivity)}><Icon name="plus" />Create Activity</button>
+        <details className="account-menu" ref={account}>
+          <summary className="account-menu-toggle">{isAnonymous ? 'Guest' : signedIn ? 'Account' : 'Sign in'}<Icon name="chevron" /></summary>
+          <div className="account-dropdown">
+            <p>{isAnonymous ? 'Playing as a guest' : 'Your SportBuddy account'}</p>
+            <button className="auth-button" onClick={() => run(() => navigate('/profile'))}>View your profile</button>
+            {isAnonymous ? <>
+              <button className="auth-button" onClick={() => run(onLinkGoogleAccount)} disabled={!authReady || authBusy}>Link Google Account</button>
+              <small>Keep your guest profile and activities.</small>
+              <button className="auth-button" onClick={() => run(onSignInWithGoogle)} disabled={!authReady || authBusy || historyLoading}>Sign in with Google</button>
+            </> : !signedIn ? <button className="auth-button" onClick={() => run(onSignInWithGoogle)} disabled={!authReady || authBusy}>Sign in with Google</button>
+              : <button className="auth-button" onClick={() => run(onSignOut)} disabled={!authReady || authBusy}>{authBusy ? 'Signing out…' : 'Sign out'}</button>}
+          </div>
+        </details>
       </div>
-    </header>
-  )
+    </div>
+    {authPopupPending && <span className="auth-popup-status" role="status">{authPopupCancellationPending ? 'Finishing cancellation…' : 'Google sign-in is in progress. Close the popup to cancel.'}</span>}
+  </header>
 }

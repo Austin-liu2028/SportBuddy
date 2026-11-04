@@ -31,12 +31,13 @@ import HomePage from './pages/HomePage'
 import ProfilePage from './pages/ProfilePage'
 import type {
   Activity,
-  Partner,
   Route,
   UserProfile,
 } from './types'
 import { getActivityStatus } from './utils/activityStatus'
-import { getOrganizerName } from './utils/organizerName'
+import { DISPLAY_NAME_MAX_LENGTH, getOrganizerName } from './utils/organizerName'
+import { firebaseErrorMessage, isFirebaseError } from './utils/firebaseErrors'
+import { useDialog } from './hooks/useDialog'
 import './App.css'
 
 function getRoute(pathname: string): Route {
@@ -96,6 +97,8 @@ function App() {
   const profileCreationAttempts = useRef(new Set<string>())
   const profileMigrationAttempts = useRef(new Set<string>())
   const [authBusy, setAuthBusy] = useState(false)
+  const recoveryDialog = useDialog(accountRecoveryOpen, () => dismissAccountRecovery(), authBusy)
+  const signInDialog = useDialog(signInWarningOpen, () => setSignInWarningOpen(false), authBusy)
   const [authPopupPending, setAuthPopupPending] = useState(false)
   const [authPopupCancellationPending, setAuthPopupCancellationPending] = useState(false)
   const authBusyRef = useRef(false)
@@ -247,7 +250,7 @@ function App() {
             })
           }).catch((error) => {
             console.error('Profile creation failed:', error)
-            setProfileError('Unable to create your profile. Check your connection and Firestore permissions.')
+            setProfileError(firebaseErrorMessage(error, 'profile'))
             setProfileLoading(false)
           })
           return
@@ -296,8 +299,9 @@ function App() {
           profileMigrationAttempts.current.add(userId)
 
           if (!hasValidCreatedAt) {
+            console.error('Profile migration blocked:', { path: `users/${userId}`, reason: 'Invalid or missing immutable createdAt timestamp' })
             setProfileError(
-              'Your profile has an invalid or missing createdAt timestamp. It cannot be safely repaired with the current rule requiring createdAt to remain unchanged on updates.'
+              'This profile needs a repair by the site owner before changes can be saved. Your existing games are still attached to your account.'
             )
             return
           }
@@ -341,14 +345,14 @@ function App() {
               error
             )
             setProfileError(
-              'Your profile needs migration, but Firestore rejected the update. Verify the users/{uid} rules allow this user to update valid profile fields while keeping createdAt unchanged.'
+              'Your profile needs an update that couldn’t be saved. Contact the site owner if refreshing doesn’t resolve this.'
             )
           })
         }
       },
       (error) => {
-        console.error('Profile read failed:', error)
-        setProfileError('Unable to load your profile from Firestore.')
+        console.error('Profile read failed:', { operation: 'listen', path: `users/${userId}`, uid: userId, code: error.code, error })
+        setProfileError(firebaseErrorMessage(error, 'profile'))
         setProfileLoading(false)
       }
     )
@@ -369,12 +373,14 @@ function App() {
         )
 
         setActivities(loadedActivities)
+        setSelectedActivity(current => current ? loadedActivities.find(activity => activity.id === current.id) ?? null : null)
         setActivitiesLoading(false)
         setDataError('')
       },
       (error) => {
-        console.error('Firestore read failed:', error)
-        setDataError('Unable to load activities from Firestore.')
+        console.error('Activities read failed:', { operation: 'listen', path: 'activities', uid: userId, isAnonymous: auth.currentUser?.isAnonymous, code: error.code, error })
+        setActivities([])
+        setDataError(firebaseErrorMessage(error, 'activities'))
         setActivitiesLoading(false)
       }
     )
@@ -730,6 +736,10 @@ function App() {
       setProfileError('Your display name cannot be empty.')
       return false
     }
+    if (updatedProfile.displayName.trim().length > DISPLAY_NAME_MAX_LENGTH) {
+      setProfileError(`Your name must be ${DISPLAY_NAME_MAX_LENGTH} characters or fewer.`)
+      return false
+    }
 
     setProfileSaving(true)
     setProfileError('')
@@ -770,9 +780,8 @@ function App() {
     } catch (error) {
       console.error('Profile save failed:', error)
       setProfileError(
-        error instanceof Error
-          ? `Unable to save your profile: ${error.message}`
-          : 'Unable to save your profile. Please try again.'
+        isFirebaseError(error) ? firebaseErrorMessage(error, 'profile')
+          : 'Your profile changes couldn’t be saved. Please try again or contact the site owner.'
       )
       return false
     } finally {
@@ -785,6 +794,8 @@ function App() {
     function handlePopState() {
       setRoute(getRoute(window.location.pathname))
       setNotice('')
+      setSelectedActivity(null)
+      setCreateActivityOpen(false)
     }
 
     window.addEventListener('popstate', handlePopState)
@@ -803,7 +814,8 @@ function App() {
     setNotice('')
     setSelectedActivity(null)
 
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: 'auto' })
+    requestAnimationFrame(() => document.getElementById('main-content')?.focus({ preventScroll: true }))
   }
 
 async function joinActivity(activity: Activity) {
@@ -881,7 +893,7 @@ async function joinActivity(activity: Activity) {
     console.error('Join failed:', error)
 
     setNotice(
-      error instanceof Error
+      isFirebaseError(error) ? firebaseErrorMessage(error, 'activity') : error instanceof Error
         ? error.message
         : 'Failed to join activity.'
     )
@@ -956,7 +968,7 @@ async function leaveActivity(activity: Activity) {
     console.error('Leave failed:', error)
 
     setNotice(
-      error instanceof Error
+      isFirebaseError(error) ? firebaseErrorMessage(error, 'activity') : error instanceof Error
         ? error.message
         : 'Failed to leave activity.'
     )
@@ -1012,21 +1024,27 @@ async function leaveActivity(activity: Activity) {
       setNotice('Activity created successfully!')
     } catch (error) {
       console.error('Failed to create activity:', error)
-      throw new Error('Failed to save activity and your name. Please try again.')
+      throw new Error(isFirebaseError(error) ? firebaseErrorMessage(error, 'activity') : 'Failed to save activity and your name. Please try again.')
     }
   }
 
-  function invitePartner(partner: Partner) {
-    setNotice(`Invite sent to ${partner.name}!`)
+  function openCreateActivity() {
+    if (!userId || activitiesLoading || dataError || profileLoading || profileError || authBusy) {
+      setNotice('Your profile and games need to finish loading before you can create an activity.')
+      return
+    }
+    setCreateActivityOpen(true)
   }
-
-  function viewPartnerProfile(partner: Partner) {
-    setNotice(`Viewing ${partner.name}'s profile.`)
+  function openActivity(activity: Activity) {
+    setNotice('')
+    setSelectedActivity(activity)
   }
 
   return (
     <main className="app-shell">
       <Navbar
+        onCreateActivity={openCreateActivity}
+        canCreate={Boolean(userId && !activitiesLoading && !dataError && !profileLoading && !profileError && !authBusy)}
         route={route}
         navigate={navigate}
         authReady={authReady}
@@ -1042,22 +1060,24 @@ async function leaveActivity(activity: Activity) {
       />
 
       {!authReady && (
-        <div className="notice" role="status">
-          Connecting to Firebase...
+        <div className="sr-only" role="status">
+          Connecting to SportBuddy…
         </div>
       )}
 
       {authReady && userId && activitiesLoading && (
-        <div className="notice" role="status">
+        <div className="sr-only" role="status">
           Loading activities...
         </div>
       )}
 
       {dataError && (
         <div className="notice" role="alert">
-          {dataError}
+          <span>{dataError}</span><button className="retry-button" onClick={() => window.location.reload()}>Refresh</button>
         </div>
       )}
+
+      {profileError && route !== '/profile' && <div className="notice" role="alert"><span>Your profile needs attention before you can organize a game.</span><button className="retry-button" onClick={() => navigate('/profile')}>Review profile</button></div>}
 
       {notice && (
         <div className="notice" role="status">
@@ -1073,41 +1093,43 @@ async function leaveActivity(activity: Activity) {
 
       {route === '/' && (
         <HomePage
+          loading={!authReady || activitiesLoading}
+          error={dataError}
           activities={activities}
           joinedIds={joinedIds}
           now={currentTime}
           query={searchQuery}
           setQuery={setSearchQuery}
-          onSearch={() => navigate('/activities')}
-          onOpenActivity={setSelectedActivity}
-          onCreateActivity={() => {
-            if (!userId || activitiesLoading || dataError || profileLoading || profileError) {
-              setNotice('Activities are not ready yet.')
-              return
-            }
-            setCreateActivityOpen(true)
-          }}
+          onOpenActivity={openActivity}
+          onCreateActivity={openCreateActivity}
           navigate={navigate}
         />
       )}
 
       {route === '/partners' && (
         <FindPartnersPage
-          onInvite={invitePartner}
-          onViewProfile={viewPartnerProfile}
+          activities={activities}
+          currentUid={userId}
+          joinedIds={joinedIds}
+          now={currentTime}
+          loading={!authReady || activitiesLoading}
+          error={dataError}
+          onOpenActivity={openActivity}
         />
       )}
 
       {route === '/activities' && (
         <ActivitiesPage
+          loading={!authReady || activitiesLoading}
+          error={dataError}
           activities={activities}
           joinedIds={joinedIds}
           now={currentTime}
           query={searchQuery}
           setQuery={setSearchQuery}
           organizerName={profile.displayName || 'Player'}
-          profileReady={!profileLoading && !profileError}
-          onOpenActivity={setSelectedActivity}
+          profileReady={Boolean(userId && !activitiesLoading && !dataError && !profileLoading && !profileError && !authBusy)}
+          onOpenActivity={openActivity}
           onCreate={createActivity}
         />
       )}
@@ -1124,11 +1146,15 @@ async function leaveActivity(activity: Activity) {
           activitiesCreated={activitiesCreated.length}
           recentActivities={recentActivities}
           activitiesForCalendar={currentUserActivityHistory}
-          onOpenActivity={setSelectedActivity}
+          onOpenActivity={openActivity}
           isAnonymous={isAnonymous}
           isGoogleLinked={isGoogleLinked}
           onSave={saveProfile}
           onViewActivities={() => navigate('/activities')}
+          onLinkGoogleAccount={linkGoogleAccount}
+          onSignInWithGoogle={requestGoogleSignIn}
+          onSignOut={signOutGoogle}
+          authBusy={authBusy}
         />
       )}
 
@@ -1148,6 +1174,7 @@ async function leaveActivity(activity: Activity) {
 
       {selectedActivity && (
         <ActivityModal
+          error={notice}
           key={`${selectedActivity.id}:${userId}`}
           activity={selectedActivity}
           currentUser={!profileLoading && profile.uid === userId ? profile : undefined}
@@ -1178,6 +1205,7 @@ async function leaveActivity(activity: Activity) {
           }}
         >
           <section
+            ref={recoveryDialog}
             className="modal-card account-recovery-modal"
             role="dialog"
             aria-modal="true"
@@ -1237,6 +1265,7 @@ async function leaveActivity(activity: Activity) {
           }}
         >
           <section
+            ref={signInDialog}
             className="modal-card account-recovery-modal"
             role="dialog"
             aria-modal="true"

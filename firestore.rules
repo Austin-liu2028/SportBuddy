@@ -1,0 +1,278 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ==========================================
+    // USER PROFILES
+    // ==========================================
+
+    match /users/{userId} {
+
+      function isOwner() {
+        return request.auth != null
+          && request.auth.uid == userId;
+      }
+
+      function validProfile() {
+        return request.resource.data.keys().hasOnly([
+          'uid',
+          'displayName',
+          'email',
+          'sports',
+          'skills',
+          'availability',
+          'distance',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'uid',
+          'displayName',
+          'email',
+          'sports',
+          'skills',
+          'availability',
+          'distance',
+          'createdAt',
+          'updatedAt'
+        ])
+        && request.resource.data.uid == userId
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 60
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.sports is string
+        && request.resource.data.skills is string
+        && request.resource.data.availability is string
+        && request.resource.data.distance is string
+        && request.resource.data.updatedAt == request.time;
+      }
+
+      allow get: if isOwner();
+      allow list: if false;
+
+      allow create: if isOwner()
+        && validProfile()
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isOwner()
+        && validProfile()
+        && request.resource.data.createdAt ==
+           resource.data.createdAt;
+
+      allow delete: if false;
+    }
+
+    // ==========================================
+    // ACTIVITIES
+    // ==========================================
+
+    match /activities/{activityId} {
+
+      function savedParticipantNames() {
+        return resource.data.get('participants', [resource.data.get('organizer', 'Player')]);
+      }
+
+      function callerName() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName;
+      }
+
+      function joiningNamesValid() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['participants'])
+          || (savedParticipantNames() is list
+            && request.resource.data.participants is list
+            && request.resource.data.participants == savedParticipantNames().concat([callerName()]));
+      }
+
+      function removingOwnNameValid() {
+        let before = savedParticipantNames();
+        let after = request.resource.data.get('participants', before);
+        let name = callerName();
+        return before is list && after is list
+            && name in before
+            && after.size() == before.size() - 1
+            && after.removeAll([name]) == before.removeAll([name]);
+      }
+
+      function leavingNamesValid() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['participants'])
+          || removingOwnNameValid();
+      }
+
+      // Authenticated users can view activities.
+      allow read: if request.auth != null;
+
+      // ========================================
+      // CREATE ACTIVITY
+      // ========================================
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll([
+          'id',
+          'ownerUid',
+          'participantUids',
+          'title',
+          'sport',
+          'date',
+          'time',
+          'location',
+          'players',
+          'capacity',
+          'createdAt',
+
+          // NEW: Required timestamps
+          'startAt',
+          'endAt'
+        ])
+
+        && request.resource.data.id == activityId
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.participantUids ==
+           [request.auth.uid]
+        && request.resource.data.players == 1
+
+        && request.resource.data.capacity is int
+        && request.resource.data.capacity >= 2
+        && request.resource.data.capacity <= 50
+
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 60
+
+        && request.resource.data.createdAt == request.time
+
+        // NEW: Validate activity timestamps
+        && request.resource.data.startAt is timestamp
+        && request.resource.data.endAt is timestamp
+
+        // End must be after start.
+        && request.resource.data.endAt >
+           request.resource.data.startAt
+
+        // Do not create already-ended activities.
+        && request.resource.data.endAt > request.time;
+
+      // ========================================
+      // UPDATE: JOIN GAME / LEAVE GAME
+      // ========================================
+
+      allow update: if request.auth != null
+
+        && resource.data.keys().hasAll([
+          'ownerUid',
+          'participantUids',
+          'players',
+          'capacity'
+        ])
+
+        && resource.data.participantUids is list
+        && request.resource.data.participantUids is list
+
+        && resource.data.players is int
+        && resource.data.capacity is int
+
+        && resource.data.players ==
+           resource.data.participantUids.size()
+
+        // Membership and the caller's own display-name snapshot may change.
+        && request.resource.data.diff(resource.data)
+             .affectedKeys()
+             .hasOnly(['participantUids', 'players', 'participants'])
+
+        // No duplicate participants.
+        && request.resource.data.participantUids
+             .toSet().size() ==
+           request.resource.data.participantUids.size()
+
+        && (
+
+          // ====================================
+          // JOIN GAME
+          // ====================================
+          (
+            // NEW: Require valid time fields.
+            resource.data.keys().hasAll([
+              'startAt',
+              'endAt'
+            ])
+
+            && resource.data.startAt is timestamp
+            && resource.data.endAt is timestamp
+
+            // NEW: Activity must not be ended.
+            && resource.data.endAt > request.time
+
+            // Keep original capacity checks.
+            && resource.data.players <
+               resource.data.capacity
+
+            && !(request.auth.uid in
+                 resource.data.participantUids)
+
+            && request.resource.data.participantUids.size() ==
+               resource.data.participantUids.size() + 1
+
+            // Only the current user may join.
+            && request.resource.data.participantUids
+                 .toSet()
+                 .difference(
+                   resource.data.participantUids.toSet()
+                 ) ==
+               [request.auth.uid].toSet()
+
+            // Preserve existing participants.
+            && request.resource.data.participantUids
+                 .toSet()
+                 .hasAll(resource.data.participantUids)
+
+            && request.resource.data.players ==
+               resource.data.players + 1
+
+            && joiningNamesValid()
+          )
+
+          ||
+
+          // ====================================
+          // LEAVE GAME
+          // ====================================
+          (
+            // Organizer cannot leave.
+            request.auth.uid != resource.data.ownerUid
+
+            // User must already be a participant.
+            && request.auth.uid in
+               resource.data.participantUids
+
+            // Remove only the current user.
+            && request.resource.data.participantUids ==
+               resource.data.participantUids
+                 .removeAll([request.auth.uid])
+
+            && request.resource.data.players ==
+               resource.data.players - 1
+
+            && leavingNamesValid()
+          )
+        )
+
+        // Ensure consistent participant count.
+        && request.resource.data.players ==
+           request.resource.data.participantUids.size()
+
+        // Preserve organizer participation.
+        && request.resource.data.participantUids.size() >= 1
+
+        && request.resource.data.participantUids[0] ==
+           resource.data.ownerUid
+
+        && request.resource.data.players <=
+           resource.data.capacity;
+
+      // Deleting activities is disabled.
+      allow delete: if false;
+    }
+  }
+}

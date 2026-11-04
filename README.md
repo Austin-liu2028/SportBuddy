@@ -43,6 +43,10 @@ Open http://localhost:5173 in your browser.
 npm run build
 ```
 
+Run `npm test` for the unit tests and `npm run lint` for lint checks. See [responsive UI validation](docs/UI_REDESIGN.md) for browser coverage, Firebase findings, and remaining limits.
+
+The [membership permission fix](docs/FIRESTORE_MEMBERSHIP_FIX.md) documents the join/leave rules mismatch and how to run its local emulator tests. Its production rules deployment is pending.
+
 ## Deployment
 
 ```bash
