@@ -855,8 +855,22 @@ async function joinActivity(activity: Activity) {
         throw new Error('This activity is full.')
       }
 
+      const profileSnapshot = await transaction.get(doc(db, 'users', user.uid))
+      const profileName = profileSnapshot.exists() &&
+        typeof profileSnapshot.data().displayName === 'string'
+        ? profileSnapshot.data().displayName.trim()
+        : ''
+      const participantName =
+        profileName || user.displayName?.trim() || profile.displayName || 'Player'
+      const participants = Array.isArray(data.participants)
+        ? data.participants.filter((name): name is string => typeof name === 'string')
+        : typeof data.organizer === 'string'
+          ? [data.organizer]
+          : []
+
       transaction.update(activityRef, {
         participantUids: [...participantUids, user.uid],
+        participants: [...participants, participantName],
         players: data.players + 1,
       })
     })
@@ -912,10 +926,26 @@ async function leaveActivity(activity: Activity) {
         throw new Error('You have not joined this activity.')
       }
 
+      const profileSnapshot = await transaction.get(doc(db, 'users', user.uid))
+      const profileName = profileSnapshot.exists() &&
+        typeof profileSnapshot.data().displayName === 'string'
+        ? profileSnapshot.data().displayName.trim()
+        : ''
+      const participantName =
+        profileName || user.displayName?.trim() || profile.displayName || 'Player'
+      const participants = Array.isArray(data.participants)
+        ? data.participants.filter((name): name is string => typeof name === 'string')
+        : typeof data.organizer === 'string'
+          ? [data.organizer]
+          : []
+      const participantNameIndex = participants.indexOf(participantName)
+      if (participantNameIndex >= 0) participants.splice(participantNameIndex, 1)
+
       transaction.update(activityRef, {
         participantUids: participantUids.filter(
           (participantUid: string) => participantUid !== user.uid
         ),
+        participants,
         players: data.players - 1,
       })
     })
@@ -1080,6 +1110,8 @@ async function leaveActivity(activity: Activity) {
           gamesJoined={gamesJoined.length}
           activitiesCreated={activitiesCreated.length}
           recentActivities={recentActivities}
+          activitiesForCalendar={currentUserActivityHistory}
+          onOpenActivity={setSelectedActivity}
           isAnonymous={isAnonymous}
           isGoogleLinked={isGoogleLinked}
           onSave={saveProfile}
