@@ -1135,7 +1135,9 @@ async function leaveActivity(activity: Activity) {
 
       {selectedActivity && (
         <ActivityModal
+          key={`${selectedActivity.id}:${userId}`}
           activity={selectedActivity}
+          currentUser={!profileLoading && profile.uid === userId ? profile : undefined}
           joined={joinedIds.includes(selectedActivity.id)}
           organizer={selectedActivity.ownerUid === userId}
           submitting={joining}

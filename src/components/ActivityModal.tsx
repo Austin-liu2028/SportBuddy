@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import type { Activity } from '../types'
+import type { Activity, UserProfile } from '../types'
 import { activityStatusLabels, getActivityStatus } from '../utils/activityStatus'
+import { getParticipantNames } from '../utils/participantNames'
 
 type ActivityModalProps = {
   activity: Activity
@@ -10,6 +11,7 @@ type ActivityModalProps = {
   organizer: boolean
   submitting: boolean
   now: number
+  currentUser?: Pick<UserProfile, 'uid' | 'displayName'>
   onClose: () => void
   onJoin: () => void
   onLeave: () => void
@@ -21,6 +23,7 @@ export default function ActivityModal({
   organizer,
   submitting,
   now,
+  currentUser,
   onClose,
   onJoin,
   onLeave,
@@ -29,8 +32,14 @@ export default function ActivityModal({
 const status = getActivityStatus(activity, now)
 const cannotJoin = status === 'ended' || status === 'unavailable'
 
-const [resolvedNamesByUid, setResolvedNamesByUid] = useState<Record<string, string>>({})
-const [participantNameLoadError, setParticipantNameLoadError] = useState(false)
+const [nameResolution, setNameResolution] = useState<{
+  activity: Activity
+  currentUser: typeof currentUser
+  names: Record<string, string>
+  failed: boolean
+} | null>(null)
+const currentResolution = nameResolution?.activity === activity && nameResolution.currentUser === currentUser
+  ? nameResolution : null
 
 const contactValue = activity.contact.method === 'Phone'
   ? formatPhoneNumber(activity.contact.value)
@@ -39,18 +48,22 @@ const contactValue = activity.contact.method === 'Phone'
 
   useEffect(() => {
     let cancelled = false
+    const knownNames: Record<string, string> = {}
+    if (currentUser?.uid && currentUser.displayName.trim()) {
+      knownNames[currentUser.uid] = currentUser.displayName.trim()
+    }
     const participantUids = activity.participantUids ?? []
-    const uidsToResolve = participantUids.filter((uid) => uid !== activity.ownerUid)
+    const uidsToResolve = participantUids.filter((uid) => uid !== activity.ownerUid && !knownNames[uid])
     if (
       uidsToResolve.length === 0 ||
-      activity.participants.length === participantUids.length
+      getParticipantNames(activity, knownNames).unresolvedCount === 0
     ) {
       return () => { cancelled = true }
     }
 
     Promise.allSettled(uidsToResolve.map((uid) => getDoc(doc(db, 'users', uid))))
       .then((results) => {
-        const names: Record<string, string> = {}
+        const names: Record<string, string> = { ...knownNames }
         let failed = false
         results.forEach((result, index) => {
           if (result.status === 'rejected') {
@@ -69,36 +82,19 @@ const contactValue = activity.contact.method === 'Phone'
         })
 
         if (!cancelled) {
-          setResolvedNamesByUid(names)
-          setParticipantNameLoadError(failed)
+          setNameResolution({ activity, currentUser, names, failed })
         }
       })
 
     return () => { cancelled = true }
-  }, [activity.id, activity.ownerUid, activity.participants, activity.participantUids])
+  }, [activity, currentUser])
 
-  const savedParticipantNames = activity.participants.filter(
-    (name): name is string => typeof name === 'string' && Boolean(name.trim())
-  )
-  const participantUids = activity.participantUids ?? []
-  const displayedParticipantNames = participantUids.length === savedParticipantNames.length
-    ? savedParticipantNames
-    : (() => {
-      const names = [...savedParticipantNames]
-      const knownNames = new Set(names.map((name) => name.toLocaleLowerCase()))
-      participantUids.forEach((uid) => {
-        const name = resolvedNamesByUid[uid] || (uid === activity.ownerUid ? activity.organizer : '')
-        if (name && !knownNames.has(name.toLocaleLowerCase())) {
-          names.push(name)
-          knownNames.add(name.toLocaleLowerCase())
-        }
-      })
-      return names
-    })()
-  const unresolvedParticipantCount = Math.max(
-    0,
-    activity.players - displayedParticipantNames.length
-  )
+  const knownNames = { ...currentResolution?.names }
+  if (currentUser?.uid && currentUser.displayName.trim()) {
+    knownNames[currentUser.uid] = currentUser.displayName.trim()
+  }
+  const { names: displayedParticipantNames, unresolvedCount: unresolvedParticipantCount } =
+    getParticipantNames(activity, knownNames)
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
@@ -131,7 +127,7 @@ const contactValue = activity.contact.method === 'Phone'
           <div className="participant-list">
             <span>Participants</span>
             <p>{displayedParticipantNames.join(' · ') || 'Participant names unavailable'}</p>
-            {participantNameLoadError && unresolvedParticipantCount > 0 && (
+            {currentResolution?.failed && unresolvedParticipantCount > 0 && (
               <p role="status">
                 Names for {unresolvedParticipantCount} {unresolvedParticipantCount === 1 ? 'participant' : 'participants'} could not be loaded.
               </p>
