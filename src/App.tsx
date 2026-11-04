@@ -25,7 +25,6 @@ import { auth, db } from './firebase'
 import ActivityModal from './components/ActivityModal'
 import CreateActivityModal from './components/CreateActivityModal'
 import Navbar from './components/Navbar'
-import SearchBar from './components/SearchBar'
 import { initialUserProfile } from './data/profile'
 import ActivitiesPage from './pages/ActivitiesPage'
 import FindPartnersPage from './pages/FindPartnersPage'
@@ -35,9 +34,9 @@ import type {
   Activity,
   Partner,
   Route,
-  Sport,
   UserProfile,
 } from './types'
+import { getActivityStatus } from './utils/activityStatus'
 import './App.css'
 
 function getRoute(pathname: string): Route {
@@ -58,6 +57,7 @@ function App() {
 
   // Activities now come from Firestore
   const [activities, setActivities] = useState<Activity[]>([])
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
   
 
   const [selectedActivity, setSelectedActivity] =
@@ -67,8 +67,6 @@ function App() {
     useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [homeSport, setHomeSport] =
-    useState<'All' | Sport>('All')
 
   const [notice, setNotice] = useState('')
   const [profile, setProfile] =
@@ -80,7 +78,11 @@ function App() {
   const [recoveryNeedsRetry, setRecoveryNeedsRetry] = useState(false)
   const [signInWarningOpen, setSignInWarningOpen] = useState(false)
 
-  
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 15_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
   const userId = firebaseUser?.uid ?? null
   const isAnonymous = firebaseUser?.isAnonymous ?? false
@@ -830,6 +832,17 @@ async function joinActivity(activity: Activity) {
       const data = snapshot.data()
       const participantUids = data.participantUids
 
+      const status = getActivityStatus(
+        { ...data, id: snapshot.id } as Activity,
+        Date.now()
+      )
+      if (status === 'ended') {
+        throw new Error('This activity has ended and can no longer be joined.')
+      }
+      if (status === 'unavailable') {
+        throw new Error('This activity has no verifiable schedule and cannot be joined.')
+      }
+
       if (!Array.isArray(participantUids)) {
         throw new Error('This activity needs data migration.')
       }
@@ -950,7 +963,6 @@ async function leaveActivity(activity: Activity) {
         createdAt: serverTimestamp(),
       })
 
-      setHomeSport('All')
       setSearchQuery('')
       setCreateActivityOpen(false)
 
@@ -986,13 +998,6 @@ async function leaveActivity(activity: Activity) {
         onSignOut={signOutGoogle}
       />
 
-      {route === '/' && (
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-        />
-      )}
-
       {!authReady && (
         <div className="notice" role="status">
           Connecting to Firebase...
@@ -1027,10 +1032,10 @@ async function leaveActivity(activity: Activity) {
         <HomePage
           activities={activities}
           joinedIds={joinedIds}
+          now={currentTime}
           query={searchQuery}
           setQuery={setSearchQuery}
-          sport={homeSport}
-          setSport={setHomeSport}
+          onSearch={() => navigate('/activities')}
           onOpenActivity={setSelectedActivity}
           onCreateActivity={() => {
             if (!userId || activitiesLoading || dataError || profileLoading || profileError) {
@@ -1054,6 +1059,9 @@ async function leaveActivity(activity: Activity) {
         <ActivitiesPage
           activities={activities}
           joinedIds={joinedIds}
+          now={currentTime}
+          query={searchQuery}
+          setQuery={setSearchQuery}
           organizerName={profile.displayName || 'Player'}
           profileReady={!profileLoading && !profileError}
           onOpenActivity={setSelectedActivity}
@@ -1099,6 +1107,7 @@ async function leaveActivity(activity: Activity) {
           joined={joinedIds.includes(selectedActivity.id)}
           organizer={selectedActivity.ownerUid === userId}
           submitting={joining}
+          now={currentTime}
           onClose={() => setSelectedActivity(null)}
           onJoin={() => joinActivity(selectedActivity)}
           onLeave={() => leaveActivity(selectedActivity)}

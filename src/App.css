@@ -166,6 +166,7 @@
 
 .global-search input {
   width: 100%;
+  min-width: 0;
   height: 100%;
   padding: 0;
   border: 0;
@@ -187,6 +188,29 @@
   border-radius: 4px;
   color: #a29aa6;
   font-size: 9px;
+}
+
+.search-submit {
+  min-height: 32px;
+  flex: 0 0 auto;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #654184;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.search-submit:hover {
+  background: #53336f;
+}
+
+.search-submit:focus-visible {
+  outline: 3px solid #c5acd6;
+  outline-offset: 2px;
 }
 
 .notice {
@@ -590,7 +614,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 13px;
+  margin-top: 15px;
 }
 
 .activity-title-row h3 {
@@ -604,6 +628,41 @@
   white-space: nowrap;
 }
 
+.activity-status-row {
+  margin-top: 9px;
+}
+
+.activity-status {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  padding: 4px 7px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.activity-status-upcoming {
+  background: #f0eaf4;
+  color: #654184;
+}
+
+.activity-status-ongoing {
+  background: #e8f1e2;
+  color: #55743c;
+}
+
+.activity-status-ended {
+  background: #f3eeee;
+  color: #806565;
+}
+
+.activity-status-unavailable {
+  background: #f1f0f2;
+  color: #716b76;
+}
+
 .sport-name {
   flex: 0 0 auto;
   color: #a19aa5;
@@ -612,41 +671,54 @@
 
 .activity-details {
   display: grid;
-  gap: 7px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 15px;
 }
 
 .activity-details p {
   display: flex;
   min-width: 0;
-  align-items: center;
-  gap: 7px;
-  overflow: hidden;
+  align-items: flex-start;
+  gap: 5px;
   margin: 0;
-  color: #77707c;
-  font-size: 10px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: #403747;
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.45;
 }
 
-.activity-details svg {
-  width: 15px;
-  height: 15px;
+.activity-detail-icon {
+  display: inline-flex;
+  width: 17px;
+  height: 20px;
   flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: #654184;
+}
+
+.activity-detail-icon svg {
+  width: 16px;
+  height: 16px;
   fill: none;
-  stroke: #9a8ba3;
-  stroke-width: 1.35;
+  stroke: currentColor;
+  stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
+.activity-detail-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .activity-bottom {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 9px;
-  margin-top: 15px;
-  padding-top: 12px;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 14px;
   border-top: 1px solid #f0edf1;
 }
 
@@ -671,18 +743,19 @@
 .player-count {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  color: #7c7480;
-  font-size: 9px;
+  gap: 5px;
+  color: #403747;
+  font-size: 12px;
+  font-weight: 550;
   white-space: nowrap;
 }
 
 .player-count svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   fill: none;
-  stroke: #8d8193;
-  stroke-width: 1.25;
+  stroke: #654184;
+  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -1215,9 +1288,25 @@
     gap: 6px;
   }
 
-  .skill-tag,
-  .player-count {
+  .skill-tag {
     font-size: 8px;
+  }
+
+  .activity-details p {
+    font-size: 14px;
+  }
+
+  .player-count {
+    font-size: 12px;
+  }
+
+  .activity-bottom {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .activity-tags {
+    flex: 1 1 180px;
   }
 
   .join-button {
@@ -1270,12 +1359,11 @@
   line-height: 1;
 }
 
-.activity-details p > span {
+.activity-details p > .activity-detail-icon {
   display: inline-flex;
-  width: 15px;
+  width: 17px;
   justify-content: center;
-  color: #95869f;
-  font-size: 15px;
+  color: #654184;
 }
 
 .player-count > span {
@@ -1318,8 +1406,7 @@
   box-shadow: 0 5px 18px rgba(49, 37, 58, 0.035);
 }
 
-.filter-panel label,
-.secondary-filters label {
+.filter-panel label {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -1330,7 +1417,6 @@
 }
 
 .filter-panel select,
-.secondary-filters select,
 .create-form input,
 .create-form select,
 .create-form textarea {
@@ -1348,7 +1434,6 @@
 }
 
 .filter-panel select:focus,
-.secondary-filters select:focus,
 .create-form input:focus,
 .create-form select:focus,
 .create-form textarea:focus {
@@ -1491,19 +1576,104 @@
   margin: 17px 0 14px;
 }
 
-.secondary-filters {
+.activity-filter-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(150px, 1.15fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 14px;
+  border: 1px solid #ebe6ed;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.activity-filter-panel > label:not(.available-spots-filter) {
   display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  color: #51465a;
+  font-size: 11px;
+  font-weight: 650;
 }
 
-.secondary-filters label {
-  width: 155px;
+.activity-filter-panel select,
+.activity-filter-panel input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 9px;
+  border: 1px solid #e3dce7;
+  border-radius: 6px;
+  outline: 0;
+  background: #fff;
+  color: #403747;
+  font: inherit;
+  font-size: 12px;
 }
 
-.secondary-filters select {
-  height: 34px;
-  font-size: 10px;
+.activity-filter-panel select:focus-visible,
+.activity-filter-panel input[type="date"]:focus-visible,
+.available-spots-filter input:focus-visible,
+.reset-activity-filters:focus-visible {
+  outline: 3px solid rgba(101, 65, 132, 0.2);
+  outline-offset: 2px;
+}
+
+.activity-filter-panel input[type="date"][aria-invalid="true"] {
+  border-color: #b34d4d;
+}
+
+.date-range-error {
+  margin: -4px 0 12px;
+  color: #9b3e45;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.available-spots-filter {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  color: #51465a;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.available-spots-filter input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #654184;
+}
+
+.reset-activity-filters {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #dcd0e5;
+  border-radius: 6px;
+  background: #faf8fb;
+  color: #654184;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.reset-activity-filters:hover {
+  border-color: #bca9cb;
+  background: #f3eef6;
+}
+
+.activity-results-count {
+  margin: 0 0 12px;
+  color: #62576a;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .activities-page-heading {
@@ -1610,6 +1780,7 @@
 
 .modal-detail-grid div,
 .modal-player-summary > div {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -1617,16 +1788,35 @@
 
 .modal-detail-grid span,
 .modal-player-summary span {
-  color: #938a98;
-  font-size: 9px;
+  color: #62576a;
+  font-size: 11px;
   font-weight: 600;
 }
 
 .modal-detail-grid strong,
 .modal-player-summary strong {
-  color: #4a3c52;
-  font-size: 11px;
+  color: #403747;
+  font-size: 12px;
   font-weight: 650;
+}
+
+.activity-modal-schedule strong,
+.activity-modal-location strong {
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.activity-status-text-upcoming { color: #654184 !important; }
+.activity-status-text-ongoing { color: #55743c !important; }
+.activity-status-text-ended { color: #806565 !important; }
+.activity-status-text-unavailable { color: #716b76 !important; }
+
+.activity-status-note {
+  margin: 10px 0 0;
+  color: #806565;
+  font-size: 10px;
+  line-height: 1.5;
 }
 
 .modal-player-summary {
@@ -1693,6 +1883,17 @@
   background: #edf3e4;
   color: #5d763d;
   box-shadow: none;
+}
+
+.modal-actions .activity-action-disabled:disabled {
+  background: #f1f0f2;
+  color: #716b76;
+}
+
+.form-error {
+  margin: 0;
+  color: #9b4545;
+  font-size: 11px;
 }
 
 .small-modal {
@@ -2063,6 +2264,15 @@
     grid-template-columns: 1fr;
   }
 
+  .activity-filter-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .available-spots-filter,
+  .reset-activity-filters {
+    grid-column: span 1;
+  }
+
   .profile-content-grid {
     grid-template-columns: 1fr;
   }
@@ -2093,9 +2303,15 @@
     font-size: 9px;
   }
 
-  .secondary-filters label {
-    flex: 1;
-    width: auto;
+  .activity-filter-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .available-spots-filter,
+  .reset-activity-filters {
+    grid-column: auto;
   }
 
   .partner-actions {

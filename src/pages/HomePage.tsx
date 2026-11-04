@@ -1,14 +1,15 @@
 import ActivityCard from '../components/ActivityCard'
-import SportFilters from '../components/SportFilters'
-import type { Activity, Route, Sport } from '../types'
+import SearchBar from '../components/SearchBar'
+import type { Activity, Route } from '../types'
+import { getActivityStatus, getActivityTimestampRange } from '../utils/activityStatus'
 
 type HomePageProps = {
   activities: Activity[]
   joinedIds: string[]
+  now: number
   query: string
   setQuery: (query: string) => void
-  sport: 'All' | Sport
-  setSport: (sport: 'All' | Sport) => void
+  onSearch: () => void
   onOpenActivity: (activity: Activity) => void
   onCreateActivity: () => void
   navigate: (path: Route) => void
@@ -17,19 +18,29 @@ type HomePageProps = {
 export default function HomePage({
   activities,
   joinedIds,
+  now,
   query,
   setQuery,
-  sport,
-  setSport,
+  onSearch,
   onOpenActivity,
   onCreateActivity,
   navigate,
 }: HomePageProps) {
-  const search = query.trim().toLowerCase()
-  const visible = activities.filter((activity) => (
-    (sport === 'All' || activity.sport === sport) &&
-    `${activity.title} ${activity.sport} ${activity.location} ${activity.skill}`.toLowerCase().includes(search)
-  ))
+  const upcoming = activities
+    .filter((activity) => (
+      getActivityStatus(activity, now) === 'upcoming' &&
+      getActivityTimestampRange(activity) !== null
+    ))
+    .toSorted((first, second) => {
+      const firstHasSpots = first.players < first.capacity
+      const secondHasSpots = second.players < second.capacity
+      if (firstHasSpots !== secondHasSpots) return firstHasSpots ? -1 : 1
+
+      const firstStart = getActivityTimestampRange(first)?.[0].getTime() ?? Number.POSITIVE_INFINITY
+      const secondStart = getActivityTimestampRange(second)?.[0].getTime() ?? Number.POSITIVE_INFINITY
+      return firstStart - secondStart
+    })
+    .slice(0, 4)
 
   return (
     <>
@@ -59,22 +70,30 @@ export default function HomePage({
         </div>
       </section>
 
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        onSubmit={onSearch}
+        placeholder="Search activities or locations..."
+      />
+
       <section className="activities-section" id="activities" aria-labelledby="activities-title">
         <div className="section-heading">
           <div>
-            <span className="section-eyebrow">THE NEIGHBORHOOD COURT</span>
-            <h2 id="activities-title">Activities Near You</h2>
-            <p>Join a game that's looking for players.</p>
+            <span className="section-eyebrow">FIND YOUR NEXT GAME</span>
+            <h2 id="activities-title">Upcoming Activities</h2>
+            <p>See what’s coming up and find a game that fits.</p>
           </div>
-          <button className="view-all-button" onClick={() => navigate('/activities')}>Explore all <span aria-hidden="true">→</span></button>
+          <button className="view-all-button" onClick={() => navigate('/activities')}>See All Activities <span aria-hidden="true">→</span></button>
         </div>
-        <SportFilters selected={sport} onSelect={setSport} />
-        {visible.length ? (
+        {upcoming.length ? (
           <div className="activity-grid">
-            {visible.map((activity) => (
+            {upcoming.map((activity) => (
               <ActivityCard
                 activity={activity}
                 joined={joinedIds.includes(activity.id)}
+                now={now}
+                showDistance={false}
                 key={activity.id}
                 onOpen={onOpenActivity}
               />
@@ -83,9 +102,9 @@ export default function HomePage({
         ) : (
           <div className="empty-activities">
             <span aria-hidden="true">✦</span>
-            <h3>No activities found</h3>
-            <p>Try a different sport or search term to find your next game.</p>
-            <button onClick={() => { setSport('All'); setQuery('') }}>Clear filters</button>
+            <h3>No upcoming activities</h3>
+            <p>Explore all activities to find ongoing games and past activity details.</p>
+            <button onClick={() => navigate('/activities')}>See All Activities</button>
           </div>
         )}
       </section>

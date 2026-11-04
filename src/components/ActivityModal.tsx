@@ -1,10 +1,12 @@
 import type { Activity } from '../types'
+import { activityStatusLabels, getActivityStatus } from '../utils/activityStatus'
 
 type ActivityModalProps = {
   activity: Activity
   joined: boolean
   organizer: boolean
   submitting: boolean
+  now: number
   onClose: () => void
   onJoin: () => void
   onLeave: () => void
@@ -15,10 +17,13 @@ export default function ActivityModal({
   joined,
   organizer,
   submitting,
+  now,
   onClose,
   onJoin,
   onLeave,
 }: ActivityModalProps) {
+  const status = getActivityStatus(activity, now)
+  const cannotJoin = status === 'ended' || status === 'unavailable'
   const contactValue = activity.contact.method === 'Phone'
     ? formatPhoneNumber(activity.contact.value)
     : activity.contact.value
@@ -33,11 +38,22 @@ export default function ActivityModal({
         <h2 id="activity-modal-title">{activity.title}</h2>
         <p className="modal-organizer">Organized by <strong>{activity.organizer}</strong></p>
         <div className="modal-detail-grid">
-          <div><span>Date &amp; time</span><strong>{activity.date}, {activity.time}</strong></div>
-          <div><span>Location</span><strong>{activity.location}</strong></div>
+          <div className="activity-modal-schedule"><span>Date &amp; time</span><strong>{activity.date}, {activity.time}</strong></div>
+          <div>
+            <span>Activity status</span>
+            <strong className={`activity-status-text activity-status-text-${status}`}>
+              {activityStatusLabels[status]}
+            </strong>
+          </div>
+          <div className="activity-modal-location"><span>Location</span><strong>{activity.location}</strong></div>
           <div><span>Skill level</span><strong>{activity.skill}</strong></div>
           <div><span>Distance</span><strong>{activity.distance === 'Nearby' ? 'Near campus' : `${activity.distance} away`}</strong></div>
         </div>
+        {status === 'unavailable' && (
+          <p className="activity-status-note">
+            The full activity date and time range are unavailable, so joining is disabled.
+          </p>
+        )}
         <div className="modal-player-summary">
           <div><span>Players</span><strong>{activity.players} / {activity.capacity}</strong></div>
           <div className="participant-list">
@@ -52,17 +68,21 @@ export default function ActivityModal({
         </section>
         <div className="modal-actions">
           <button
-            className="find-button"
+            className={!joined && cannotJoin ? 'find-button activity-action-disabled' : 'find-button'}
             onClick={joined ? onLeave : onJoin}
-            disabled={organizer || submitting || (!joined && activity.players >= activity.capacity)}
+            disabled={organizer || submitting || (!joined && (activity.players >= activity.capacity || cannotJoin))}
           >
             {organizer
               ? 'Organizer'
               : joined
                 ? submitting ? 'Leaving...' : 'Leave Game'
-                : activity.players >= activity.capacity
-                  ? 'Game is full'
-                  : submitting ? 'Joining...' : 'Join Game'}
+                : status === 'ended'
+                  ? 'Activity has ended'
+                  : status === 'unavailable'
+                    ? 'Schedule unavailable'
+                    : activity.players >= activity.capacity
+                      ? 'Game is full'
+                      : submitting ? 'Joining...' : 'Join Game'}
           </button>
         </div>
       </section>

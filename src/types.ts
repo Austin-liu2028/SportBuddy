@@ -27,6 +27,8 @@ export type Activity = {
   participantUids?: string[]
   ownerUid?: string
   createdAt?: Timestamp
+  startAt?: Timestamp
+  endAt?: Timestamp
   id: string
   sport: Sport
   contact: {

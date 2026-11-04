@@ -1,32 +1,54 @@
-# React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+# SportBuddy
 
-Currently, two official plugins are available:
+SportBuddy is a web application that helps students find sports partners, discover activities, and connect with people who share similar interests.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Discover and join sports activities
+- Create and manage activities
+- Filter activities by sport, skill level, date, and availability
+- Google and anonymous authentication
+- User profiles and activity history
+- Responsive web interface
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the Oxlint configuration
+- React
+- TypeScript
+- Vite
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Hosting
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Getting Started
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+### Install dependencies
+
+```bash
+npm install
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### Start the development server
+
+```bash
+npm run dev
+```
+
+Open http://localhost:5173 in your browser.
+
+## Build
+
+```bash
+npm run build
+```
+
+## Deployment
+
+```bash
+firebase deploy --only hosting
+```
+
+## Live Website
+
+https://sportbuddy-e56c7.web.app/

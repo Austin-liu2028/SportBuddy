@@ -25,6 +25,8 @@ dist-ssr
 
 # Firebase cache
 .firebase/
+.sportbuddy-test-activity-manifest.json
+.sportbuddy-test-activity-manifest.json.tmp
 
 # Environment variables
 .env

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Timestamp } from 'firebase/firestore'
 import { sportOptions } from '../data/activities'
 import type { Activity, Sport } from '../types'
 
@@ -21,20 +22,32 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
   const [contactMethod, setContactMethod] = useState<'Phone' | 'Email'>('Phone')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [formError, setFormError] = useState('')
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!sport || !startTime || !endTime) return
     if (endTime <= startTime) {
+      setFormError('End time must be later than start time.')
       const endTimeInput = event.currentTarget.querySelector<HTMLInputElement>('[name="endTime"]')
       endTimeInput?.setCustomValidity('End time must be later than start time.')
       endTimeInput?.reportValidity()
       return
     }
-    const parsedDate = date ? new Date(`${date}T12:00:00`) : null
-    const dateLabel = parsedDate
-      ? parsedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
-      : 'Date TBD'
+    const parsedDate = new Date(`${date}T12:00:00`)
+    const startAt = new Date(`${date}T${startTime}:00`)
+    const endAt = new Date(`${date}T${endTime}:00`)
+    if (
+      Number.isNaN(parsedDate.getTime()) ||
+      Number.isNaN(startAt.getTime()) ||
+      Number.isNaN(endAt.getTime()) ||
+      endAt <= startAt
+    ) {
+      setFormError('Enter a valid activity date and time range.')
+      return
+    }
+    setFormError('')
+    const dateLabel = parsedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
     const formatTime = (value: string) => {
       const [hours = 0, minutes = 0] = value.split(':').map(Number)
       return `${hours % 12 || 12}:${String(minutes).padStart(2, '0')} ${hours >= 12 ? 'PM' : 'AM'}`
@@ -49,6 +62,8 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
       title: name.trim(),
       date: dateLabel,
       time: `${formatTime(startTime)}–${formatTime(endTime)}`,
+      startAt: Timestamp.fromDate(startAt),
+      endAt: Timestamp.fromDate(endAt),
       location: location.trim(),
       skill,
       players: 1,
@@ -73,9 +88,9 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
         <form className="create-form" onSubmit={submit}>
           <label className="wide-field">Activity name<input required maxLength={60} value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Sunday soccer" /></label>
           <label>Sport<select required value={sport} onChange={(event) => setSport(event.target.value as Sport | '')}><option value="" disabled>Select a sport</option>{sportOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-          <label>Date<input required type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
-          <label>Start time<input required type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} /></label>
-          <label>End time<input required type="time" name="endTime" min={startTime || undefined} value={endTime} onChange={(event) => { event.currentTarget.setCustomValidity(''); setEndTime(event.target.value) }} /></label>
+          <label>Date<input required type="date" value={date} onChange={(event) => { setFormError(''); setDate(event.target.value) }} /></label>
+          <label>Start time<input required type="time" value={startTime} onChange={(event) => { setFormError(''); setStartTime(event.target.value) }} /></label>
+          <label>End time<input required type="time" name="endTime" min={startTime || undefined} value={endTime} onChange={(event) => { event.currentTarget.setCustomValidity(''); setFormError(''); setEndTime(event.target.value) }} /></label>
           <label>Maximum players<input required type="number" min="2" max="50" value={capacity} onChange={(event) => setCapacity(Number(event.target.value))} /></label>
           <label className="wide-field">Location<input required maxLength={80} value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Where are you meeting?" /></label>
           <label>Skill level<select value={skill} onChange={(event) => setSkill(event.target.value)}><option>All levels</option><option>Beginner friendly</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label>
@@ -86,6 +101,7 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
             <label className="wide-field">Email<input required type="email" autoComplete="email" maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@northwestern.edu" /></label>
           )}
           <label className="wide-field">Description<textarea rows={3} maxLength={250} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Share a few details about your activity..." /></label>
+          {formError && <p className="form-error wide-field" role="alert">{formError}</p>}
           <button className="find-button wide-field" type="submit">Create Activity</button>
         </form>
       </section>
