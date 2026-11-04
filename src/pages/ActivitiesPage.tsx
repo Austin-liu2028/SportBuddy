@@ -41,7 +41,7 @@ type ActivitiesPageProps = {
   organizerName: string
   profileReady: boolean
   onOpenActivity: (activity: Activity) => void
-  onCreate: (activity: Activity) => void
+  onCreate: (activity: Activity) => Promise<void>
 }
 
 export default function ActivitiesPage({
@@ -155,8 +155,8 @@ export default function ActivitiesPage({
     setQuery('')
   }
 
-  function createActivity(activity: Activity) {
-    onCreate(activity)
+  async function createActivity(activity: Activity) {
+    await onCreate(activity)
     setCreating(false)
     setTab('yours')
   }

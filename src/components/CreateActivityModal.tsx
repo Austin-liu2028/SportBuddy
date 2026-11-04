@@ -2,15 +2,17 @@ import { useState } from 'react'
 import { Timestamp } from 'firebase/firestore'
 import { sportOptions } from '../data/activities'
 import type { Activity, Sport } from '../types'
+import { getOrganizerName } from '../utils/organizerName'
 
 type CreateActivityModalProps = {
   organizerName: string
   onClose: () => void
-  onCreate: (activity: Activity) => void
+  onCreate: (activity: Activity) => Promise<void>
 }
 
 export default function CreateActivityModal({ organizerName, onClose, onCreate }: CreateActivityModalProps) {
   const [name, setName] = useState('')
+  const [displayName, setDisplayName] = useState(() => organizerName.trim().toLowerCase() === 'player' ? '' : organizerName.trim())
   const [sport, setSport] = useState<Sport | ''>('')
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -23,9 +25,18 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [formError, setFormError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (submitting) return
+    let savedOrganizerName: string
+    try {
+      savedOrganizerName = getOrganizerName(displayName)
+    } catch (error) {
+      setFormError((error as Error).message)
+      return
+    }
     if (!sport || !startTime || !endTime) return
     if (endTime <= startTime) {
       setFormError('End time must be later than start time.')
@@ -70,23 +81,31 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
       players: 1,
       capacity,
       distance: 'Nearby',
-      organizer: organizerName,
-      participants: [organizerName],
+      organizer: savedOrganizerName,
+      participants: [savedOrganizerName],
       description: description.trim() || 'A new campus activity. Join us for a game!',
     }
-    onCreate(activity)
+    setSubmitting(true)
+    try {
+      await onCreate(activity)
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to save activity. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose()
+      if (!submitting && event.target === event.currentTarget) onClose()
     }}>
       <section className="modal-card create-modal" role="dialog" aria-modal="true" aria-labelledby="create-modal-title">
-        <button className="modal-close" onClick={onClose} aria-label="Close create activity form">×</button>
+        <button className="modal-close" onClick={onClose} disabled={submitting} aria-label="Close create activity form">×</button>
         <span className="section-eyebrow">BRING PEOPLE TOGETHER</span>
         <h2 id="create-modal-title">Create an activity</h2>
         <p className="modal-organizer">Set up a game and invite the campus community.</p>
         <form className="create-form" onSubmit={submit}>
+          <label className="wide-field">Your name<input required autoComplete="nickname" maxLength={80} value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="What should other players call you?" aria-describedby="organizer-name-help" /><span id="organizer-name-help">Shown as the organizer and saved to your profile. No account required.</span></label>
           <label className="wide-field">Activity name<input required maxLength={60} value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Sunday soccer" /></label>
           <label>Sport<select required value={sport} onChange={(event) => setSport(event.target.value as Sport | '')}><option value="" disabled>Select a sport</option>{sportOptions.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
           <label>Date<input required type="date" value={date} onChange={(event) => { setFormError(''); setDate(event.target.value) }} /></label>
@@ -103,7 +122,7 @@ export default function CreateActivityModal({ organizerName, onClose, onCreate }
           )}
           <label className="wide-field">Description<textarea rows={3} maxLength={250} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Share a few details about your activity..." /></label>
           {formError && <p className="form-error wide-field" role="alert">{formError}</p>}
-          <button className="find-button wide-field" type="submit">Create Activity</button>
+          <button className="find-button wide-field" type="submit" disabled={submitting}>{submitting ? 'Creating…' : 'Create Activity'}</button>
         </form>
       </section>
     </div>

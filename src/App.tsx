@@ -16,7 +16,6 @@ import {
   doc,
   onSnapshot,
   serverTimestamp,
-  setDoc,
   runTransaction,
   Timestamp,
 } from 'firebase/firestore'
@@ -37,6 +36,7 @@ import type {
   UserProfile,
 } from './types'
 import { getActivityStatus } from './utils/activityStatus'
+import { getOrganizerName } from './utils/organizerName'
 import './App.css'
 
 function getRoute(pathname: string): Route {
@@ -969,28 +969,41 @@ async function leaveActivity(activity: Activity) {
 
   // Save newly created activities to Firestore
   async function createActivity(activity: Activity) {
-    if (!auth.currentUser) {
-      setNotice('Please wait for Firebase authentication.')
-      return
+    const user = auth.currentUser
+    if (!user) {
+      throw new Error('Please wait for authentication before creating an activity.')
     }
 
-    if (profileLoading || profileError) {
-      setNotice('Your profile is not ready yet. Please try again shortly.')
-      return
+    if (profileLoading || profileError || profile.uid !== user.uid) {
+      throw new Error('Your profile is not ready yet. Please try again shortly.')
     }
 
+    const organizerName = getOrganizerName(activity.organizer)
     try {
       const activityRef = doc(collection(db, 'activities'))
+      const profileRef = doc(db, 'users', user.uid)
 
-      await setDoc(activityRef, {
-        ...activity,
-        id: activityRef.id,
-        organizer: profile.displayName || 'Player',
-        participants: [profile.displayName || 'Player'],
-        ownerUid: auth.currentUser.uid,
-        participantUids: [auth.currentUser.uid],
-        players: 1,
-        createdAt: serverTimestamp(),
+      await runTransaction(db, async (transaction) => {
+        const savedProfile = await transaction.get(profileRef)
+        if (!savedProfile.exists()) {
+          throw new Error('Your profile is not ready yet. Please try again shortly.')
+        }
+        if (savedProfile.data().displayName !== organizerName) {
+          transaction.update(profileRef, {
+            displayName: organizerName,
+            updatedAt: serverTimestamp(),
+          })
+        }
+        transaction.set(activityRef, {
+          ...activity,
+          id: activityRef.id,
+          organizer: organizerName,
+          participants: [organizerName],
+          ownerUid: user.uid,
+          participantUids: [user.uid],
+          players: 1,
+          createdAt: serverTimestamp(),
+        })
       })
 
       setSearchQuery('')
@@ -999,7 +1012,7 @@ async function leaveActivity(activity: Activity) {
       setNotice('Activity created successfully!')
     } catch (error) {
       console.error('Failed to create activity:', error)
-      setNotice('Failed to save activity. Please try again.')
+      throw new Error('Failed to save activity and your name. Please try again.')
     }
   }
 
