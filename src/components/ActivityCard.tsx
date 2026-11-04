@@ -26,7 +26,7 @@ export default function ActivityCard({ activity, joined, now, onOpen }: Activity
     </div>
     <h3><button className="card-title-button" onClick={() => onOpen(activity)}>{activity.title}</button></h3>
     <div className="activity-details">
-      <p><Icon name="calendar" /><span>{date}<span className="detail-separator"> · </span>{time}</span></p>
+      <p className="activity-date-time"><Icon name="calendar" /><span>{date}<span className="detail-separator"> · </span>{time}</span></p>
       <p><Icon name="pin" /><span>{activity.location}</span></p>
     </div>
     <div className="activity-tags"><span className="skill-tag">{activity.skill}</span><span className="player-count"><Icon name="users" />{activity.players}/{activity.capacity} players</span></div>

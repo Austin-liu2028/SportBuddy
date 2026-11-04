@@ -82,6 +82,13 @@
 .card-title-button:hover { color: var(--green); }
 .activity-details { display: grid; gap: 10px; margin-bottom: 16px; }
 .activity-details p { display: flex; align-items: flex-start; gap: 9px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.activity-details p.activity-date-time {
+  font-size: 18px;
+  font-weight: 600;
+  color: #263c32;
+  line-height: 1.5;
+  align-items: center;
+}
 .activity-details .icon { width: 16px; height: 18px; color: #7c8980; }
 .activity-details p > span { min-width: 0; }
 .detail-separator { white-space: pre; }
@@ -289,6 +296,9 @@
   .activity-card { padding: 18px; }
   .activity-card h3 { font-size: 20px; margin-bottom: 8px; }
   .activity-details p { font-size: 13px; }
+  .activity-details p.activity-date-time {
+    font-size: 16px;
+  }
   .activity-card-top { margin-bottom: 7px; }
   .activity-details { gap: 9px; margin-bottom: 14px; }
   .card-title-button { min-height: 44px; }
