@@ -39,13 +39,15 @@ The browser report and screenshots are in `/private/tmp/sportbuddy-member-profil
 
 ## Deployment
 
-The frontend and the new `memberProfiles` rule must both be deployed to enable shared photos on the live site. This feature has not been deployed by this change. Existing members acquire a public profile when they next visit or sign in with the updated app; a profile photo cannot be recovered for a guest or fictional account that has no Google photo. Existing game documents need no migration.
+The frontend and the new `memberProfiles` rules were deployed with approval on November 4, 2026. The live site is https://sportbuddy-e56c7.web.app/. Existing members acquire a public profile when they next visit or sign in with the updated app; a profile photo cannot be recovered for a guest or fictional account that has no Google photo. Existing game documents need no migration.
 
-A read-only comparison confirmed the deployed rules match the committed baseline. The pending rule change adds only the separate public-member collection; existing private-account and game-membership rules are retained.
+Before deployment, a read-only comparison confirmed the server rules matched the committed baseline. After deployment, the released rules matched the tested local file exactly. Existing private-account and game-membership rules were retained.
 
-With deployment approval:
+Deployment command used with approval:
 
 ```sh
 npm run build
 firebase deploy --only firestore:rules,hosting --project sportbuddy-e56c7
 ```
+
+Live browser verification loaded `/assets/index-Mtmi-297.js`, opened organizer profiles from cards and game details, navigated back to game details, and checked the mobile Profile page. There was no horizontal overflow, no runtime error, and no failed network request. The live verification report is in `/private/tmp/sportbuddy-live-profile-deployment/report.json`.

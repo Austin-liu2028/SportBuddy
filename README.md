@@ -45,7 +45,7 @@ npm run build
 
 Run `npm test` for the unit tests and `npm run lint` for lint checks. See [responsive UI validation](docs/UI_REDESIGN.md) for browser coverage, Firebase findings, and remaining limits.
 
-The [membership permission fix](docs/FIRESTORE_MEMBERSHIP_FIX.md) documents the join/leave rules mismatch and how to run its local emulator tests. Its production rules deployment is pending.
+The [membership permission fix](docs/FIRESTORE_MEMBERSHIP_FIX.md) documents the join/leave rules mismatch and how to run its local emulator tests. The deployed rules include this fix.
 
 See [member profiles](docs/MEMBER_PROFILES.md) for clickable organizer photos, public profile fields, privacy rules, and deployment requirements.
 

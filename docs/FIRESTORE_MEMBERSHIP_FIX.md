@@ -1,4 +1,6 @@
-# Membership permission fix — awaiting deployment
+# Membership permission fix
+
+Status: the fix is present in production. A read-only check on November 4, 2026 confirmed the deployed policy includes the tested membership rules.
 
 The deployed `activities/{activityId}` update rule allows changes only to `participantUids` and `players`. The app's join/leave transaction also changes `participants`, which stores display-name snapshots. That extra changed field causes `permission-denied` even when the caller is authenticated with Google. The rule checks authentication, not whether the provider is Google.
 
@@ -11,7 +13,7 @@ The deployed source was retrieved read-only on November 4, 2026. The original re
 
 The frontend no longer interprets a generic permission denial as a need to sign in with Google. Profile/organizer name inputs now respect the deployed profile rule's 60-character limit; the previous 80-character UI limit could also cause an atomic profile/activity save to be rejected.
 
-`firebase.json` references the local rules file. No production rules or records have been changed by this fix.
+`firebase.json` references the local rules file. The deployed policy includes the membership fix; no game records are changed by deploying these rules.
 
 Validation:
 
@@ -26,7 +28,7 @@ Reproduce the rules checks with the Firebase CLI installed:
 firebase emulators:exec --project demo-sportbuddy-rules --only firestore "npm run test:rules"
 ```
 
-After approval, deploy only the rules fix:
+To redeploy only the rules after approval:
 
 ```sh
 firebase deploy --only firestore:rules --project sportbuddy-e56c7
